@@ -58,15 +58,15 @@ Fully implemented UEF chunks
 Approximated
 
 * `0x0116` - floating point gap is approximated to nearest 2 cycles
-0x0113, 0x0115 - phase and freq change ignored
 
 Ignored
 * `0x0113` Change of base frequency
-* `0x0116` Phase change
-(seems to usually reflect mechanical variance of original cassette player behavior Could be implemented fairly easily but will affect speed of conversion)
+* `0x0115` Phase change
+
+These seem to usually reflect mechanical variance of original cassette player behavior. As we just want to load game data rather than recreate archival quality audio, these are ignored.
 
 To-do list
-* `0x0104` defined data block (for Acorn Atom)
+* `0x0104` defined data block (for Acorn Atom and BBC titles like AndroidAttack & Joust)
 * `0x0114` security cycles
 
 Thanks
