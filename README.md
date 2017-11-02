@@ -33,6 +33,7 @@ URL parameters
 * `PHASE=<int>` Change sine phase. Defaults to Acorn standard 180 degrees.
 
 * `TURBO=1` Reduce tape load time by minimizing inter-block carrier tones and reducing stop bit to 1/2 cycle.
+* `CARRIER=2` Carrier tone length factor to help Issue 3 BBC Micro. Default is 1.
 
 Need for speed
 --------------
