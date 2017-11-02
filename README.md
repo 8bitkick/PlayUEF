@@ -22,14 +22,14 @@ For testing purposes http://localhost:8000/test.html fetches links to the STH UE
 URL parameters
 --------------
 
-* No parameters defaults to loading Electron Arcadians and converting to 1200 baud, 180 phase, with 2 cycles per stop bit.
+* No parameters defaults to loading Acorn Electron Arcadians.
 
 * `FILE=<string>` URL to UEF file or zip containing UEF
 
 * `LOCAL=true` Prompt user to select local file
 
 * `BAUD=<int>` Change base frequency. Defaults to Acorn standard 1200 Hz.
-  * e.g. `BAUD=1400` works comfortably on my Acorn Electron and BBC Micro issue 7, but YMMV
+  * e.g. `BAUD=1400` works comfortably on my Acorn Electron and BBC Micro issue 7
 
 
 * `PHASE=<int>` Change sine phase. Defaults to Acorn standard 180 degrees.
@@ -37,10 +37,10 @@ URL parameters
 * `CARRIER=<int>` Carrier tone length factor
   * `CARRIER=0` Minimal inter-block carrier tones for faster loading
   * `CARRIER=1` Default
-  * `CARRIER=2` Help Issue 3 BBC Micro. Default is 1.
+  * `CARRIER=2` BBC Micro Issue 3 compatibility. Default is 1.
 
 
-* `STOPBIT=<int>` Faster loading but setting number of cycles per stop bit / 2
+* `STOPBIT=<int>` Faster loading. Equal to number of cycles per stop bit / 2
   * `STOPBIT=1` Tested on Acorn Electron
   * `STOPBIT=3` Tested on BBC Micro Issue 7
   * `STOPBIT=4` Default (2 cycles of high tone)
