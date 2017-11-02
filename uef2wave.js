@@ -25,7 +25,7 @@
 
 
 
-var uef2wave = function(uefData, baud, sampleRate, turbo, phase, carrier){
+var uef2wave = function(uefData, baud, sampleRate, stopCycles, phase, carrier){
   this.uefData = uefData;
 
   // check if the UEF is in fact zipped
@@ -37,7 +37,7 @@ var uef2wave = function(uefData, baud, sampleRate, turbo, phase, carrier){
   if (this.isValidUEF()==false) {alert("ERROR: Invalid UEF file :(");}
   this.baud = baud;
   this.sampleRate = sampleRate;
-  this.turbo = turbo;
+  this.stopCycles = stopCycles;
   this.phase =  phase;
   this.uefChunks = [];
   this.warning = "";
@@ -53,7 +53,7 @@ uef2wave.prototype.decode = function() {
   var sampleLength   = 0;
   var uefPos         = 12; // skip over "UEF File!"
   var uefDataLength  = this.uefData.length;
-  var firstBlock     = true; // track to reduce firstBlock carrier tones in turbo
+  var firstBlock     = true; // track to reduce firstBlock carrier tones if carrier=0
   var carrier        = this.carrier;
 
   wordAt = function(array,position){
@@ -122,8 +122,8 @@ uef2wave.prototype.decode = function() {
               case 0x10: // 0x0110 carrier tone
               //----------------------------------------------------------
               var cycles = wordAt(this.uefData,chunkStart);
-              // turbo mode reduces interblock carrier tone section to 120 cycles
-              if (this.turbo==1 && firstBlock==false) {cycles = 120;}
+              // reduces interblock carrier tone section to 120 cycles
+              if (carrier==0 && firstBlock==false) {cycles = 120;}
               // length of preamble carrier tone relative to 1200Hz
               else {cycles = Math.ceil((this.baud/1200)*cycles)*carrier;}
               this.uefChunks.push({op:"carrierTone", args:[cycles]});
@@ -217,7 +217,7 @@ uef2wave.prototype.decode = function() {
         var sampleRate = this.sampleRate;
         var baud = this.baud;
         var phase = this.phase;
-        var turbo = this.turbo;
+        var stopCycles = this.stopCycles;
 
         // Set up WAV data views
         var waveBuffer = new ArrayBuffer(44 + (sampleLength*2)); // Header is 44 bytes, sample is 16-bit * sampleLength
@@ -238,11 +238,9 @@ uef2wave.prototype.decode = function() {
         var bit0 = generateTone(baud,1,phase, sampleRate);
         var bit1 = generateTone(baud*2,2,phase, sampleRate);
 
-        // In turbo mode we use 1/2 cycle high tone for the stop bit. My Electron handles this at least...
-        if (turbo==1)   {var stopbit = generateTone(baud*2,0.5,phase, sampleRate);
-        }
-        else            {var stopbit = bit1;
-        };
+        // Faster loading with 1/2 cycle high tone for the stop bit. My Electron handles this at least.
+        // Default is 2 cycles
+        var stopbit = generateTone(baud*2,stopCycles/2,phase, sampleRate);
 
         var samplesPerBit = bit0.length;
 

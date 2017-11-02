@@ -22,20 +22,35 @@ For testing purposes http://localhost:8000/test.html fetches links to the STH UE
 URL parameters
 --------------
 
-* No parameters defaults to loading Electron Arcadians in PlayUEF/tapes
+* No parameters defaults to loading Electron Arcadians and converting to 1200 baud, 180 phase, with 2 cycles per stop bit.
 
 * `FILE=<string>` URL to UEF file or zip containing UEF
 
 * `LOCAL=true` Prompt user to select local file
 
 * `BAUD=<int>` Change base frequency. Defaults to Acorn standard 1200 Hz.
+  * e.g. `BAUD=1400` works comfortably on my Acorn Electron and BBC Micro issue 7, but YMMV
+
 
 * `PHASE=<int>` Change sine phase. Defaults to Acorn standard 180 degrees.
 
-* `TURBO=1` Reduce tape load time by minimizing inter-block carrier tones and reducing stop bit to 1/2 cycle.
-* `CARRIER=2` Carrier tone length factor to help Issue 3 BBC Micro. Default is 1.
+* `CARRIER=<int>` Carrier tone length factor
+  * `CARRIER=0` Minimal inter-block carrier tones for faster loading
+  * `CARRIER=1` Default
+  * `CARRIER=2` Help Issue 3 BBC Micro. Default is 1.
 
-Need for speed
+
+* `STOPBIT=<int>` Faster loading but setting number of cycles per stop bit / 2
+  * `STOPBIT=1` Tested on Acorn Electron
+  * `STOPBIT=3` Tested on BBC Micro Issue 7
+  * `STOPBIT=4` Default (2 cycles of high tone)
+
+
+* `TURBO=1` Equivalent to CARRIER=0&STOPBIT=1
+
+
+
+Faster Loading
 --------------
 Converting to 44.1KHz digital audio means loading can be faster than tape (due to hardware limits on the Electron's cassette interface only about 35% faster so far).
 
@@ -69,9 +84,6 @@ These seem to usually reflect mechanical variance of original cassette player be
 To-do list
 * `0x0104` defined data block (for Acorn Atom and BBC titles like AndroidAttack & Joust)
 * `0x0114` security cycles
-
-Known issues
-------------
 
 
 Thanks
