@@ -25,7 +25,7 @@
 
 
 
-var uef2wave = function(uefData, baud, sampleRate, turbo, phase){
+var uef2wave = function(uefData, baud, sampleRate, turbo, phase, carrier){
   this.uefData = uefData;
 
   // check if the UEF is in fact zipped
@@ -41,6 +41,7 @@ var uef2wave = function(uefData, baud, sampleRate, turbo, phase){
   this.phase =  phase;
   this.uefChunks = [];
   this.warning = "";
+  this.carrier = carrier;
 };
 
 uef2wave.prototype.isValidUEF = function() {
@@ -53,6 +54,7 @@ uef2wave.prototype.decode = function() {
   var uefPos         = 12; // skip over "UEF File!"
   var uefDataLength  = this.uefData.length;
   var firstBlock     = true; // track to reduce firstBlock carrier tones in turbo
+  var carrier        = this.carrier;
 
   wordAt = function(array,position){
     var bytes = array.slice(position, position+2);
@@ -111,7 +113,7 @@ uef2wave.prototype.decode = function() {
               case 0x12: // 0x0112 Integer gap
               //----------------------------------------------------------
               var n = wordAt(this.uefData,chunkStart);
-              var cycles = Math.ceil((this.baud/1000)*2*n); // Keep gaps relative to 1000Hz
+              var cycles = Math.ceil((this.baud/1000)*2*n); // Conservative gaps as we dont support MOTOR OFF
               this.uefChunks.push({op:"integerGap", args:[cycles]});
               sampleLength += samplesPerBit * cycles;
               firstBlock = true;
@@ -122,8 +124,8 @@ uef2wave.prototype.decode = function() {
               var cycles = wordAt(this.uefData,chunkStart);
               // turbo mode reduces interblock carrier tone section to 120 cycles
               if (this.turbo==1 && firstBlock==false) {cycles = 120;}
-              // length of preamble carrier tone at start of file is always relative to non-turbo
-              else {cycles = Math.ceil((this.baud/1200)*cycles);}
+              // length of preamble carrier tone relative to 1200Hz
+              else {cycles = Math.ceil((this.baud/1200)*cycles)*carrier;}
               this.uefChunks.push({op:"carrierTone", args:[cycles]});
               sampleLength += (samplesPerBit * cycles);
               break;
@@ -147,8 +149,8 @@ uef2wave.prototype.decode = function() {
               break;
 
               case 0x11: // 0x0111 carrier tone (previously high tone) with dummy byte at byte
-              var beforeCycles = wordAt(this.uefData,chunkStart);
-              var afterCycles  = wordAt(this.uefData,chunkStart+2);
+              var beforeCycles = wordAt(this.uefData,chunkStart)*carrier;
+              var afterCycles  = wordAt(this.uefData,chunkStart+2)*carrier;
               this.uefChunks.push({op:"carrierTone", args:[beforeCycles]});
               this.uefChunks.push({op:"writeByte", args:[0xAA], header:header});
               this.uefChunks.push({op:"carrierTone", args:[afterCycles]});

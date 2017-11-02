@@ -29,6 +29,7 @@ PlayUEF = function() {
   var TURBO = getParameterByName('TURBO') || 0;
   var PHASE = getParameterByName('PHASE') || 180;
   var LOCAL = getParameterByName('LOCAL') || "false";
+  var CARRIER = getParameterByName('CARRIER') || 1;
   var PHASE = PHASE*(Math.PI/180);
   if (TURBO==1) {console.log('TURBO ON');};
   var SAMPLE_RATE  = 44100;
@@ -102,7 +103,7 @@ PlayUEF = function() {
         document.getElementById("status").innerHTML = "CONVERTING";
         try {
           // Do the actual conversion
-          var UEFobject = new uef2wave(UEFfiledata, BAUD, SAMPLE_RATE, TURBO, PHASE);
+          var UEFobject = new uef2wave(UEFfiledata, BAUD, SAMPLE_RATE, TURBO, PHASE, CARRIER);
           var wavfile = UEFobject.convert();
 
           wavname = FILE.split('.').shift().toLowerCase();

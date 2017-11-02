@@ -69,6 +69,10 @@ To-do list
 * `0x0104` defined data block (for Acorn Atom and BBC titles like AndroidAttack & Joust)
 * `0x0114` security cycles
 
+Known issues
+------------
+
+
 Thanks
 ------
-Thanks for Thomas Harte for the original UEF spec, Wouter Hobers for the python uef2wave which this project is a continuation of, DavidB, Vanekp, BigEd of the [stardot forum](http://stardot.org.uk) for suggestions and Matt Godbolt for setting the standard with the awesome [JSbeeb](https://github.com/mattgodbolt/jsbeeb). Not forgetting Arcadian and the archive of over 1000 games at the [STH archive](http://www.stairwaytohell.com/electron/uefarchive/) which make this project come to life.
+Thanks for Thomas Harte for the original UEF spec and Wouter Hobers for the python uef2wave which this project is a continuation of, BigEd, Commie_User, DavidB, Vanekp of the [stardot forum](http://stardot.org.uk) for suggestions and Matt Godbolt for setting the standard with the awesome [JSbeeb](https://github.com/mattgodbolt/jsbeeb). Not forgetting Arcadian and the archive of over 1000 games at the [STH archive](http://www.stairwaytohell.com/electron/uefarchive/) which make this project come to life.
