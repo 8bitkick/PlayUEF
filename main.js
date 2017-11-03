@@ -25,7 +25,7 @@ PlayUEF = function() {
   };
 
   var BAUD = getParameterByName('BAUD') || 1200;
-  var FILE= getParameterByName('FILE') || "/tapes/Arcadians_E.zip"; // Loads Electron Arcadians locally by default
+  var FILE= getParameterByName('FILE') || "tapes/Arcadians_E.zip"; // Loads Electron Arcadians locally by default
   var TURBO = getParameterByName('TURBO') || 0;
   var PHASE = getParameterByName('PHASE') || 180;
   var LOCAL = getParameterByName('LOCAL') || "false";
