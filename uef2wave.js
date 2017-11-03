@@ -166,8 +166,8 @@ uef2wave.prototype.decode = function() {
         break;
 
 
-        // Still implement
-        // ----------------
+        // Still to implement
+        // ------------------
         case 0x01:
         this.warning = warningLog('0x0101 multiplexed data block at byte '+uefPos);
         break;

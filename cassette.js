@@ -12,7 +12,7 @@
 // https://www.stairwaytohell.com/essentials/uef2wave.py
 
 
-function Cassette(length, position, title, baud) {
+function Cassette(length, position, title, baud, version) {
 
   function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
     //x+=radius;y+=radius;
@@ -85,10 +85,6 @@ function Cassette(length, position, title, baud) {
   circle(ctx,145,238,7);
   circle(ctx,400-145,238,7);
 
-  // Tape label edge
-  ctx.fillStyle = '#0000ff';
-  roundRect(ctx, 25, 25, 350, 165, 10, true, false);
-
   // Sprocket window
   ctx.fillStyle = tapeBody;
   roundRect(ctx, 80, 80, 400-160, 155-80, 6, true, false);
@@ -127,16 +123,28 @@ function Cassette(length, position, title, baud) {
     ctx.lineTo(120+(30*Math.cos((Math.PI/180)*(angle+180))), 120-(30*Math.sin((Math.PI/180)*(angle+180))));
     ctx.stroke();}
 
+    // Overlay label again
+    ctx.fillStyle = '#eeeeee';
+    ctx.fillRect(25,25,350,55);
+    ctx.fillRect(25,155,350,35);
+    ctx.fillRect(25,25,55,165);
+    ctx.fillRect(400-35-45,25,55,165);
+
+    // Label top corners
+    ctx.fillStyle = tapeBody;
+    ctx.moveTo(40, 25); //
+    ctx.lineTo(25, 40); //
+    ctx.lineTo(25, 25); //
+    ctx.fill(); // connect and fill
+    ctx.moveTo(400-40, 25); //
+    ctx.lineTo(400-25, 40); //
+    ctx.lineTo(400-25, 25); //
+    ctx.fill(); // connect and fill
+
     ctx.fillStyle = '#000000';
     circle(ctx,280,120,16);
     circle(ctx,120,120,16);
 
-    // Overlay label again
-    ctx.fillStyle = '#eeeeee';
-    ctx.fillRect(35,25,330,55);
-    ctx.fillRect(35,155,330,35);
-    ctx.fillRect(35,25,45,165);
-    ctx.fillRect(400-35-45,25,45,165);
 
     ctx.fillStyle = '#111111';
     ctx.textAlign = 'center';
@@ -147,16 +155,18 @@ function Cassette(length, position, title, baud) {
     ctx.font="10px Arial";
 
     ctx.fillText("Acorn Electron & BBC Micro UEF player",200,72);
+    ctx.fillText(baud,347,110);
+    ctx.fillText("baud",347,124);
 
-    ctx.fillText(baud,343,110);
-    ctx.fillText("baud",343,124);
+    ctx.fillText("version",400-347,110);
+    ctx.fillText(version,400-347,124);
 
     // sticker stripes
     darkColors = ["#0ba5e8","#ad1a93", "#eb2529","#f57819", "#fdd70b", "#66c536"];
     size = 4;
     for(var i = 0; i < 6; i++) {
       ctx.fillStyle = darkColors[5-i];
-      ctx.fillRect(35,190-((i+1)*size),330,size*.8);
+      ctx.fillRect(25,190-((i+1)*size),350,size*.8);
     }
 
     ctx.font="20px Arial";
@@ -171,6 +181,6 @@ function Cassette(length, position, title, baud) {
 
     // DELETE
     var dataURL = c.toDataURL();
-        document.getElementById('cassette').src = dataURL;
+    document.getElementById('cassette').src = dataURL;
 
   };

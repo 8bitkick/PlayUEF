@@ -7,11 +7,14 @@
 // Loads cassette-based games to Acorn Electron and BBC micro
 //
 
+var VERSION = "1.0 beta";
 
 updateStatus = function(status) { document.getElementById("status").innerHTML = status; };
 handleError = function(error) { document.getElementById("spinner").style.borderLeft = "1.1em solid #FF0000";updateStatus(error);throw new Error();};
 
 PlayUEF = function() {
+
+
 
   // Get parameterts and set defaults
   function getParameterByName(name, url) {
@@ -166,7 +169,7 @@ PlayUEF = function() {
               var duration = player.duration;
               var currentTime = player.currentTime;
               // Render cassette frame
-              Cassette(duration,currentTime,FILENAME, BAUD);
+              Cassette(duration,currentTime,FILENAME, BAUD,VERSION);
               // That took a little time
               var currentTime = player.currentTime;
 
