@@ -234,12 +234,9 @@ uef2wave.prototype.decode = function() {
           return array;
         };
 
-        // https://en.wikipedia.org/wiki/Kansas_City_standard#1200_baud
-        var bit0 = generateTone(baud,1,phase, sampleRate);
-        var bit1 = generateTone(baud*2,2,phase, sampleRate);
-
-        // Faster loading with 1/2 cycle high tone for the stop bit. My Electron handles this at least.
-        // Default is 2 cycles
+        // Create mini-samples of audio bit encoding
+        var bit0    = generateTone(baud,1,phase, sampleRate);
+        var bit1    = generateTone(baud*2,2,phase, sampleRate);
         var stopbit = generateTone(baud*2,stopCycles/2,phase, sampleRate);
 
         var samplesPerBit = bit0.length;
@@ -250,20 +247,6 @@ uef2wave.prototype.decode = function() {
           for (var i = 0 ; i < length; i++) {
             sampleData[samplePos+i] = bitArray[i];
           } samplePos+=length;
-        };
-
-        // Convert data range in UEF buffer to audio sample
-        writeData = function(start, end) {
-          for (var i = start; i < end; i++) {
-            byte = this.uefData[i];
-            writeBit(bit0); // Start bit 0
-            for (var b = 0; b < 8; b++) {
-              bit = byte & 1;
-              if (bit==1) {writeBit(bit1);} else {writeBit(bit0);}
-              byte = byte >>1;
-            }
-            writeBit(stopbit); // Stop bit 1
-          }
         };
 
         // Write individual data byte to audio sample
@@ -277,11 +260,19 @@ uef2wave.prototype.decode = function() {
           writeBit(stopbit); // Stop bit 1
         };
 
+        // Convert data range in UEF buffer to audio sample
+        writeData = function(start, end) {
+          for (var i = start; i < end; i++) {
+            writeByte(this.uefData[i]);
+          }
+        };
+
         // Write carrier tone using cycles/2 '1' bits
         carrierTone = function(cycles) {
           var cycles = cycles >> 1; // divide by two as a bit1 contains two cycles
           for (var i = 0; i < (cycles); i++) {writeBit(bit1);}};
 
+          // Gap advances sample position pointer, assumes array is zero filled
           writeGap = function(cycles) {
             samplePos+= samplesPerBit * cycles;
           };
