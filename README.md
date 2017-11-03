@@ -37,7 +37,7 @@ URL parameters
 * `CARRIER=<int>` Carrier tone length factor
   * `CARRIER=0` Minimal inter-block carrier tones for faster loading
   * `CARRIER=1` Default
-  * `CARRIER=2` BBC Micro Issue 3 compatibility. Default is 1.
+  * `CARRIER=2` BBC Micro Issue 3 compatibility.
 
 
 * `STOPBIT=<int>` Faster loading. Equal to number of cycles per stop bit / 2
@@ -48,6 +48,11 @@ URL parameters
 
 * `TURBO=1` Equivalent to CARRIER=0&STOPBIT=1
 
+Local UEF conversion & WAV download
+-----------------------------------
+Simply clicking the cassette player causes PlayUEF to download the converted audio as a WAV.
+
+Adding the `LOCAL=true` parameter to the URL causes PlayUEF to request user to select a file to convert on their local machine.
 
 
 Faster Loading
@@ -88,4 +93,4 @@ To-do list
 
 Thanks
 ------
-Thanks for Thomas Harte for the original UEF spec and Wouter Hobers for the python uef2wave which this project is a continuation of, BigEd, Commie_User, DavidB, Vanekp of the [stardot forum](http://stardot.org.uk) for suggestions and Matt Godbolt for setting the standard with the awesome [JSbeeb](https://github.com/mattgodbolt/jsbeeb). Not forgetting Arcadian and the archive of over 1000 games at the [STH archive](http://www.stairwaytohell.com/electron/uefarchive/) which make this project come to life.
+Thanks to Thomas Harte for the original UEF spec and Wouter Hobers for the python uef2wave which this project is a continuation of, BigEd, Commie_User, DavidB, Vanekp of the [stardot forum](http://stardot.org.uk) for suggestions and Matt Godbolt for setting the standard with the awesome [JSbeeb](https://github.com/mattgodbolt/jsbeeb). Not forgetting Arcadian and the archive of over 1000 games at the [STH archive](http://www.stairwaytohell.com/electron/uefarchive/) which make this project come to life.
