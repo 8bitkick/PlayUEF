@@ -109,7 +109,7 @@ PlayUEF = function() {
       // Convert UEF to WAV and set up player
       function convertUEF(UEFfiledata) {
         document.getElementById("status").innerHTML = "CONVERTING";
-        //try {
+        try {
           // Do the actual conversion
           var UEFobject = new uef2wave(UEFfiledata, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER);
           var wavfile = UEFobject.convert();
@@ -133,8 +133,8 @@ PlayUEF = function() {
           source.src = url;
           audio.load();
           //audio.play(); auto playing not possible in safari anyhow
-        //}
-        //catch(err) {handleError("INVALID UEF<BR>"+UEFNAME);}
+        }
+        catch(err) {handleError("INVALID UEF<BR>"+UEFNAME);}
 
         animationInit(UEFobject);
       }
