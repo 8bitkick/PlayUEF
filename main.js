@@ -114,7 +114,7 @@ PlayUEF = function() {
           var UEFobject = new uef2wave(UEFfiledata, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER);
           var wavfile = UEFobject.convert();
 
-          var wavname = FILE.split('.').shift().toLowerCase();
+          var wavname = UEFNAME.split('.').shift().toLowerCase();
           if (BAUD!=1200) {wavname+=BAUD};
           const blob = new Blob([wavfile], { type: 'audio/wav' });
           const url = window.URL.createObjectURL(blob);
