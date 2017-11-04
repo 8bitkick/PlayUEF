@@ -92,6 +92,7 @@ uef2wave.prototype.decode = function() {
     uefPos += doubleAt(this.uefData,uefPos+2) + 6;
   }; nextChunk = uefPos;
 
+
   // Scan UEF data array for ChunkIDs and parse length of final sample
   console.log('Unsupported UEF chunk types logged below:');
   while (nextChunk < uefDataLength) {
@@ -106,13 +107,15 @@ uef2wave.prototype.decode = function() {
 
         case 0x00: // 0x0100 implicit start/stop bit tape data block
         //----------------------------------------------------------
-        var blockLength = nextChunk - chunkStart;
         var data = new Uint8Array(this.uefData.slice(chunkStart, nextChunk));
         if (data[0]==0x2A) {header = CFSheader(data.slice(1, 24));} else {header=""}; // Request BBC micro block header summary
         this.uefChunks.push({op:"writeData", args:[chunkStart,nextChunk], data:data, header:header});
+
+        var blockLength = nextChunk - chunkStart;
         sampleLength += Math.floor(samplesPerBit*(blockLength)*10);  // acorn have 1 start 1 stop bit per 8 bit byte = 10
         firstBlock = false;
         break;
+
 
         case 0x10: // 0x0110 carrier tone
         //----------------------------------------------------------
@@ -123,6 +126,7 @@ uef2wave.prototype.decode = function() {
         else {cycles = Math.ceil((this.baud/1200)*cycles);};
         if (carrier > 0) {cycles*=carrier;}; // Carrier length factor
         this.uefChunks.push({op:"carrierTone", args:[cycles]});
+
         sampleLength += (samplesPerBit * cycles);
         break;
 
@@ -133,6 +137,8 @@ uef2wave.prototype.decode = function() {
         this.uefChunks.push({op:"carrierTone", args:[beforeCycles]});
         this.uefChunks.push({op:"writeByte", args:[0xAA], header:""});
         this.uefChunks.push({op:"carrierTone", args:[afterCycles]});
+
+        sampleLength += (samplesPerBit * (beforeCycles+afterCycles))+10;
         break;
 
         case 0x12: // 0x0112 Integer gap
