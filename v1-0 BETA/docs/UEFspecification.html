@@ -1,0 +1,1370 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head>
+
+		<title>UEF [Unified Emulator Format] File Format Draft Specs 0.10</title><meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"></head>
+
+	<body bgcolor="#ffffff" text="#000000">
+		<b><font size="+2">UEF [Unified Emulator Format] FILE FORMAT</font></b>
+	<p>
+<a href="http://electrem.emuunlim.com/UEFSpecs.htm">Archived from http://electrem.emuunlim.com/UEFSpecs.htm<br></a>
+
+Originally by Thomas Harte. Suggestions and additions to tape functionality by Fraser Ross and Greg Cook.<br>
+DRAFT file format version 0.10 / document draft 28 (revised 10/1/2006)
+
+	</p><p>
+
+<a href="#table">Chunk list</a>
+
+	</p><p><table width="100%"><tbody>
+	<tr><td bgcolor="#ffff40">
+		<b><font size="+1">Introduction</font></b>
+	</td></tr><tr><td><p>
+
+The UEF file format is designed to store accurate images of the common media types associated with the BBC Micro, Acorn Electron and Atom. Tape storage is compatible with the CUTS/BYTE/Kansas City Format, and hence the format is also capable of storing software for non-Acorn systems such as the Altair 8800, PT SOL-20, Ohio Scientific, Compukit UK101, Nascom 1/2/3, Motorola MEK D1 6800 and SWTPC 6800 kit based computers.
+
+</p><p>
+
+UEF files are chunk based and optionally compressed.
+
+</p><p>
+
+If you spot any errors or omissions in this spec, or have any comments, then please <a href="mailto:thomas.harte@gmail.com">e-mail me</a>.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#ffff40">
+		<b><font size="+1">Header and Chunk Template</font></b>
+	</td></tr><tr><td><p>
+
+All chunks conform to a common template:
+
+	</p><p>
+
+2 bytes: chunk id <br>
+4 bytes: chunk length, not counting the 6 bytes that make up this header<br>
+&lt;chunk data&gt;
+
+	</p><p>
+
+Files begin with a 12 byte file header:
+
+	</p><p>
+
+10 bytes: Null terminated string "UEF File!"<br>
+1 byte: minor version number<br>
+1 byte: major version number
+
+	</p><p>
+
+Any changes that would require separate code paths in implementing software will result in a major version number increase. Changes that introduce a substantial new variation in the way media may be described will result in a minor version number increase.
+
+	</p><p>
+
+If most existing software could still utilise most existing and potential UEFs as though the specification had not changed then the version number is not affected.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#ffff40">
+		<b><font size="+1">Covered Types of Media</font></b>
+	</td></tr><tr><td><p>
+
+The following varieties of media are supported:
+
+	</p><ul>
+
+<li>Tape images</li>
+<li>Disc images</li>
+<li>ROM images</li>
+<li>State snapshots</li>
+
+	</ul><p>
+
+There are a number of control chunks to give target machine hints but parsing of these is optional. There are also a small number of archive content chunks for information such as tape inlay transcriptions.
+
+</p><p>
+
+Tape data chunks are ordered. UEF processing should begin at the start of the file, then proceed according to the tape hardware to the end.
+
+</p><p>
+
+Any non-tape chunks encountered whilst dealing with a tape UEF should only be processed when they are crossed by tape processing mechanisms. So, for example, a tape image may include a memory snapshot of a previously stored high score table stored straight after the end of the game data.
+
+</p><p></p>
+	</td></tr><tr>
+		<td bgcolor="#ffff40"><b><font size="+1">Conventions</font></b>
+	</td></tr><tr><td><p>
+
+UEF files may and commonly will be be gzip compressed, but the suffix remains unchanged. The gzip compressed version has the normal gzip 'magic number' as its first two bytes, so the well known ZLib can be used to work with either type seemlessly.
+
+</p><p>
+
+All data is little endian unless stated otherwise.
+
+</p><p>
+
+Floating point numbers are stored in IEEE 754 format, with intel 8087 byte ordering, giving 7 figure accuracy. Example C code to read a float and convert it into a floating point number in a platform neutral manner:
+
+</p><p></p><pre>	/* assume a four byte array named Float exists, where Float[0]
+	was the first byte read from the UEF, Float[1] the second, etc */
+
+	/* decode mantissa */
+	int Mantissa;
+	Mantissa = Float[0] | (Float[1] &lt;&lt; 8) | ((Float[2]&amp;0x7f)|0x80) &lt;&lt; 16;
+
+	float Result = (float)Mantissa;
+	Result = (float)ldexp(Result, -23);
+
+	/* decode exponent */
+	int Exponent;
+	Exponent = ((Float[2]&amp;0x80) &gt;&gt; 7) | (Float[3]&amp;0x7f) &lt;&lt; 1;
+	Exponent -= 127;
+	Result = (float)ldexp(Result, Exponent);
+
+	/* flip sign if necessary */
+	if(Float[3]&amp;0x80)
+		Result = -Result;
+
+	/* floating point number is now in 'Result' */</pre><p>
+
+To write:
+
+</p><p></p><pre>	/* assume that the floating point number 'Value' is to be stored */
+	unsigned char Float[4];
+
+	/* sign bit */
+	if(Value &lt; 0)
+	{
+		Value = -Value;
+		Float[3] = 0x80;
+	}
+	else
+		Float[3] = 0;
+
+	/* decode mantissa and exponent */
+	float mantissa;
+	int exponent;
+	mantissa = (float)frexp(Value, &amp;exponent);
+	exponent += 126;
+
+	/* store mantissa */
+	Uint32 IMantissa = (Uint32)(mantissa * (1 &lt;&lt; 24));
+	Float[0] = IMantissa&amp;0xff;
+	Float[1] = (IMantissa &gt;&gt; 8)&amp;0xff;
+	Float[2] = (IMantissa &gt;&gt; 16)&amp;0x7f;
+
+	/* store exponent */
+	Float[3] |= exponent &gt;&gt; 1;
+	Float[2] |= (exponent&amp;1) &lt;&lt; 7;
+
+	/* now output Float[0], then Float[1], etc */</pre><p>
+
+All strings are ASCII and NULL terminated, and the linefeed character, ASCII code 10 (decimal) is used to deliminate new lines. The only other ASCII control character (i.e. with decimal values less than 32) recognised is 'tab', value 9. Others should be completely ignored.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#ffff40">
+		<b>Notes on pseudo-code and understanding the tape data chunks</b>
+	</td></tr><tr><td><p>
+
+This document contains pseudo-code for every tape chunk that outputs anything other than a silent wave. Several conventions of language are observed.
+
+	</p><p>
+
+Non-silent audio is composed from segments of a sine wave.
+
+	</p><p>
+
+A <b><i>pulse</i></b> is a 180 degree segment of sine wave. This will normally appear to be a single loop of wave output - a signal starting at zero, then arching in one direction away from zero before returning there.
+
+	</p><p>
+
+<b><i>Phase</i></b>, which is initially 180 degrees, dictates the region of sine wave used for pulses.
+
+	</p><p>
+
+There are two named varieties of pulse - <b><i>high pulse</i></b> and <b><i>low pulse</i></b>, named after the way they appear when phase remains at the default setting. A high pulse is the region between 180+phase and 360+phase degrees (appearing as a 'groove' if phase is 180). A low pulse is the region between 0+phase and 180+phase degrees (appearing as a 'pit' if phase is 180).
+
+	</p><p>
+
+A <b><i>cycle</i></b> is a low pulse followed by a high pulse, i.e. a complete sine cycle from 0+phase to phase+360 degrees.
+
+	</p><p>
+
+The (modal) <b><i>base frequency</i></b> determines the frequencies at which the sine wave should be generated. <b><i>Base tone</i></b> is composed of repeated cycles at the base frequency. <b><i>Carrier tone</i></b> is composed of repeated cycles at twice the base frequency.
+
+	</p><p>
+
+The data encoding format dictates how bits are encoded as patterns of sine wave.
+
+	</p><p>
+
+In the ordinary ("1200 baud") data encoding format, a zero bit is encoded as one complete cycle at the base frequency. A one bit is two complete cycles at twice the base frequency.
+
+	</p><p>
+
+In the alternate ("300 baud") data encoding format, a zero bit is encoded as four complete cycles at the base frequency. A one bit is eight complete cycles at twice the base frequency.
+
+	</p><p>
+
+Note: when encoded with the same data encoding format, zero and one bits always take the same amount of time to output.
+
+	</p><p>
+
+When UEF files are initially opened, default values are a base frequency of 1200Hz, a data encoding format of 1200 baud and a phase of 180 degrees. This produces the most common 1200 baud data storage scheme used by the BBC Micro and Acorn Electron.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#ffff40">
+		<b>Simplified Usage</b>
+	</td></tr><tr><td><p>
+
+Emulator authors seeking simplicity may ignore any chunk that deals with the tape wave form at pulse or cycle level and rationalise chunk &amp;0104 to a whole number of stop bits while retaining 99.9% compatibility with real world UEFs.
+
+	</p><p>
+
+Those looking to implement 80% compatibility with UEF files without a detailed emulation of the underlying tape hardware are recommended to implement of chunks &amp;0100, &amp;0110 and &amp;0111 and may otherwise assume 1200 baud (i.e. 1200Hz base wave, 1200 baud data encoding, phase 180).
+
+<!--	</p><p></p>
+	</td></tr><tr><td bgcolor="#ffff40">
+		<b>Notes on phase shift</b>
+	</td></tr><tr><td><p>
+
+The UEF specification incorporates the concept of 'phase shift'. This is a factor that affects how the data represented by the UEF appeared on the original cassette, but doesn't have an effect on the stored data and may be ignored by emulators or any other tool simply trying to extract binary data.
+
+</p><p>
+
+Phase is measured as an integer number between 0 and 359. If pulses and waves are thought of as sections of a sine wave, phase adjusts the sections in use. The effect of phase n is that a high pulse becomes the region 180+n to 360+n degrees, and a low n to 180+n. Phase is 180 when a UEF is opened - so a low pulse is genuinely a pit below zero, and a high pulse is genuinely an arch above.
+
+</p><p>
+
+To convert a quantity in degrees to a quantity in radians apply this conversion: (x*PI)/180. PI is the well known constant that lies close to 3.141592654.
+
+</p><p>
+
+Pictographically, we see here some waves with no shift in phase since the UEF was opened (i.e. phase = 180):
+
+</p><p>
+
+<img src="images/noshift.png" alt="Image of output wave with phase 180">
+
+</p><p>
+
+Here we see the same waves with a phase shift of 90:
+
+</p><p>
+
+<img src="images/shift.png" alt="Image of output wave with phase 90">-->
+
+
+</p><p></p>
+
+	</td></tr><tr><td bgcolor="#ffff40">
+		<b>Colour Spaces</b>
+	</td></tr><tr><td><p>
+
+With all greyscale images, the colour values simply represent colour
+intensity, but for colour images, one of the following conventions
+applies: </p><ul>
+<li><b>8 bpp:</b> colours are paletted</li>
+<li><b>16 bpp:</b> the 16 bit word is split into four nibbles, and is
+intended to be decoded so as to produce an r:g:b value with each
+component described in 8 bits. The most significant nibble is the high
+nibble of the red byte. The second most significant nibble (the other
+nibble of the high byte) is the high nibble of the green byte. The
+third most significant nibble is the high nibble blue byte. The least
+significant nibble is the 'offset' part, as it should used as the low
+nibble of the red, green and blue bytes. So, for example, the value
+&amp;abcd describes the RGB colour (0xad, 0xbd, 0xcd).</li>
+<li><b>24 bpp: </b>again an r:g:b triplet is formed, with each colour
+being represented by a byte value. The most significant byte is the red
+byte, the middle-most significant byte is the green byte, and the least
+significant byte is the blue byte. Hence the value &amp;abcdef
+describes the RGB colour (0xab, 0xcd, 0xef).</li>
+
+	</ul><p></p>
+	</td></tr><tr><td bgcolor="#ffff40">
+		<b>Bit Multiplexing</b>
+	</td></tr><tr><td><p>
+This file format has support for the special emulator feature I have
+badly named 'bit multiplexing' until a better name can be found. Bit
+multiplexing supplies the emulator with additional information so that
+old programs may be run to produce a greater quality of output. </p><p>
+
+This feature is really only for emulation use of UEF files and ignoring bit
+multiplexing will have no effect on the accuracy of
+your tool to original hardware. This feature is expected to be ignored by most
+authors.
+
+	</p><p>
+
+A separate document on multiplexing is in preparation.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#ffff40">
+		<b><font size="+1"><a name="table">All Defined Chunks</a></font></b>
+	</td></tr><tr><td><p>
+
+<a href="#00">&amp;00xx set</a> - Content information<br>
+<a href="#01">&amp;01xx set</a> - Tape chunks<br>
+<a href="#02">&amp;02xx set</a> - Disc chunks<br>
+<a href="#03">&amp;03xx set</a> - ROM chunks<br>
+<a href="#04">&amp;04xx set</a> - State snapshots<br>
+<a href="#ff">&amp;FFxx set</a> - reserved / non-emulator portable<br>
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#33ff33">
+
+		<h2><a name="00">&amp;00xx set - Content information</a></h2>
+		<p><a href="#table">Back to chunk index</a></p>
+
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0000</b> - origin information chunk
+	</td></tr><tr><td><p>
+
+This chunk holds a few lines of text describing where the file came from, or naming the utility that created it. Text should be automatically formatted by any tool utilising this information, so new lines should only be used for breaking paragraphs.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0001</b> - game instructions / manual or URL
+	</td></tr><tr><td><p>
+
+Text holding a copy of the game manual, or some notes on the game generally. Alternatively, this may contain a URL to a more meaningful resource, such as a local or internet based web site, in which case the first five characters should be "URL: " ("URL:" followed by a single space) followed by the URL.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0003</b> - inlay scan
+	</td></tr><tr><td><p>
+
+	A scan of the inlay image.
+
+	</p><p>
+	</p><p>
+	<table border="1"><tbody><tr><th>
+		Byte Offset
+	</th><th>
+		Length
+	</th><th>
+		Description
+	</th></tr><tr>
+		<td>0</td>
+		<td>2</td>
+		<td>
+
+Width of image
+
+		</td></tr><tr>
+		<td>2</td>
+		<td>2</td>
+		<td>
+
+Height of image
+
+		</td></tr><tr>
+		<td>4</td>
+		<td>1</td>
+		<td>
+
+BPP of image in low 7 bits, high bit set if image is grey scale.
+
+		</td></tr><tr>
+		<td>[5 if 8bpp paletted, non-existant otherwise]</td>
+		<td>768</td>
+		<td>
+
+If intended for display at 8bpp other than grayscale, then a 256 colour palette follows here, arranged in b, g, r triplets (bytewise you see the b value, then the g, then the r) each representing a linear scale from 0 (no quantity of this colour present) to 255, with the first palette entry coming first in the list.
+
+		</td></tr><tr>
+		<td>[773 if 8bpp paletted, 5 otherwise]</td>
+		<td>Width*Height*(bits per pixel)</td>
+		<td>
+
+The image data itself, stored in English reading order and following the usual UEF space conventions.
+
+		</td></tr></tbody></table>
+		<p>
+
+This chunk is intended for small, low quality scans, suitable for display within an emulator.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0005</b> - target machine chunk
+	</td></tr><tr><td><p>
+
+Describes a type of hardware for which this file is targetted. Multiple chunks may be present - e.g. some tapes contain a BBC and Electron version of their game, the only difference being which file is loaded last. In general, this sets a 'minimum' required hardware level, so that emulators can alert a user when a UEF requires hardware that isn't emulated.
+
+	</p><p>
+
+This chunk is exactly 1 byte long. In that byte, the most significant nibble holds one of the following values:
+
+	</p><p>
+
+0 - this file is aimed at a BBC Model A<br>
+1 - this file is aimed at an Electron<br>
+2 - this file is aimed at a BBC Model B<br>
+3 - this file is aimed at a BBC Master<br>
+4 - this file is aimed at an Atom
+
+	</p><p>
+
+The least significant nibble holds one of the following values:
+
+	</p><p>
+
+0 - this file will work well with any keyboard layout, or a layout preference is not specified<br>
+1 - this file will work best if all keys are left in the same places relative to each other as on the emulated machine (e.g. the IBM PC key physically above '/' produces ':' as per theoriginal hardware, even though it has a ' on it on UK keyboards)<br>
+2 - this file will work best with a keyboard mapped as per the emulating computer's (e.g. on a UK keyboard pressing shift+0 on a keyboard will produce ')', rather than '@' as on a BBC or Electron) </p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0006</b> - bit multiplexing information
+	</td></tr><tr><td><p>
+
+Contains one bytes, for determining what, if any, bit multiplexing information is provided by this UEF.
+
+	</p><p>
+This byte is known as the 'bit multiplier'. Take the value of this byte
+and multiply it by 4 to get the number of bits that are stored for
+every bit that the original machine had. For 32bit platforms such as
+wintel, this byte will normally have the value '1' - indicating that
+1*4 bits are available for every single in the original - i.e. every
+8bit value is shadowed by a 32bit value. </p><p>
+
+Older UEF definitions had a second byte defined for this chunk, but it is no longer used and need not be present.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0007</b> - extra palette
+	</td></tr><tr><td><p>
+This chunk holds the palette for multiplexed modes with colour depths
+of less than 16bit. Contains (chunk length / 3) entries, where each
+entry is a red byte followed by a green byte, followed by a blue byte,
+each specifying a level in the full byte range of 0-&gt;255. If
+the chunk length has a remainder when divided by three, the last
+'remainder' bytes should be ignored. </p><p>
+The first value you read is the r,g,b value of colour 0 is the palette.
+The second value is colour 1, and so on. The values for entries
+referred to in software but not described here are undefined. </p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0008</b> - ROM hint
+	</td></tr><tr><td><p>
+
+This chunk can be used to specifically say whether a particular ROM or class of ROM is required or not.
+
+	</p><p>
+If the lsb of the first byte is 0, the chunk is requesting a ROM or set
+of ROMs be absent. If it is 1, the chunk is instead requesting
+presence. </p><p>
+If the second byte has value 0, a specific ROM is being named. In which
+case a NULL terminated string follows, which should be matched with the
+ROM encoded ROM name. For information on how to decipher the ROM name
+from a ROM file, see the BBC AUG. Another byte then follows the NULL
+terminator. If its lsb is 0, the string given is exactly equivalent to
+the ROM name. If the lsb is instead 1, then instead the string, if
+length n, names only the first n characters of the ROM it is thinking
+of. In this case it is sufficient for the emulator to find any ROM with
+those first n characters. </p><p>
+
+Otherwise, if the lsb of the second byte was 0, a ROM type follows in the third byte. It has one of the following values:
+
+	</p><ul>
+
+<li>0 - all ROMs [*]</li>
+<li>1 - all ROMs except BASIC [*]</li>
+<li>2 - any DFS ROM</li>
+<li>3 - any ADFS ROM</li>
+<li>4 - any filing system ROM [*]</li>
+<li>5 - any language ROM [*]</li>
+
+	</ul><p>
+Of course if this chunk requests the presence 'any ADFS ROM', it means
+just one, whereas if it wants them absent it means the absence of any.
+Requests for ensuring presence of types marked with a * above is
+ignored - those types are included purely for the purpose of requesting
+absence. </p><p>
+There may be multiple ROM hints, in which case the order of these
+chunks is important. They are followed like a list of instructions. So
+if the first chunk says to remove any ADFS ROM's, and then a second one
+says to install any ADFS ROM's, then the UEF is in total requesting the
+presence of exactly one ADFS ROM. However an emulator need not take
+action if it finds a constraint is already satisfied, so it is
+meaningless to request more than one ADFS ROMs. </p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0009</b> - short title
+	</td></tr><tr><td><p>
+
+A short title, in ASCII, suitable for use as the title bar to an emulator, or display in a file selector.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;000a</b> - visible area
+	</td></tr><tr><td><p>
+For UEFs which use only a portion of the output screen, this chunk
+allows the total visible area to be restricted to a particular
+rectangle. Contents are: </p><p>
+	<table border="1"><tbody><tr><th>
+		Byte Offset
+	</th><th>
+		Length
+	</th><th>
+		Description
+	</th></tr><tr>
+		<td>0</td>
+		<td>2</td>
+		<td>
+
+Lowest visible x value - i.e. 'left' of visible rectangle
+
+		</td></tr><tr>
+		<td>2</td>
+		<td>2</td>
+		<td>
+
+Lowest visible y value - i.e. 'top' of visible rectangle
+
+		</td></tr><tr>
+		<td>4</td>
+		<td>2</td>
+		<td>
+Highest visible x value - i.e. 'right' of visible rectangle
+
+		</td></tr><tr>
+		<td>6</td>
+		<td>2</td>
+		<td>
+
+Highest visible y value - i.e. 'bottom' of visible rectangle
+
+		</td></tr></tbody></table>
+	<p>
+For the BBC/Electron, all coordinates are assumed to be measured on a mode 0 style
+640x256 output, regardless of the display mode in use at any particular time. Atom
+displays are assumed always to be measured per the native display mode.</p><p></p>
+	</td></tr><tr><td bgcolor="#33ff33">
+
+		<h2><a name="01">&amp;01xx set - Tape chunks</a></h2>
+		<a href="#table">Back to chunk index</a></td>
+
+	</tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0100</b> - implicit start/stop bit tape data block
+	</td></tr><tr><td><p>
+
+This chunk represents byte data stored on a cassette with Acorn's default start/stop bits (which are not reproduced).
+
+	</p><p>
+
+The least significant bit of the first byte is the first bit to appear on the tape, the most significant the 8th, and so on. Hence bytewise values are the same as the bytes stored on cassette.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0c0">
+
+<b>PSEUDO-CODE</b>
+
+<p></p><ul>
+
+<li>while bytes remain in UEF chunk
+<ul>
+	<li>output a zero bit (the start bit)</li>
+	<li>read a byte from the UEF chunk, store it to NewByte</li>
+	<li>let InternalBitCount = 8</li>
+	<li>while InternalBitCount > 0
+	<ul>
+		<li>output least significant bit of NewByte</li>
+		<li>shift NewByte right one position</li>
+		<li>decrement InternalBitCount</li>
+	</ul>
+	</li>
+	<li>output a one bit (the stop bit)</li>
+</ul>
+</li>
+
+</ul>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0101</b> - multiplexed data block
+	</td></tr><tr><td><p>
+
+The chunks that store meaningful tape data that may be multiplexed are &amp;0100 and &amp;0102. If either of these is immediately followed by a &amp;0101 chunk then that chunk contains exactly the same information as its predecessor, except that the data fields are expanded to contain multiplexed data.
+
+	</p><p>
+
+If this chunk appears after any chunk that is neither &amp;0100 nor &amp;0102 then it has no meaning and should be ignored.
+
+	</p><p>
+
+Older UEFs may use &amp;0103 as a synonym for &amp;0101.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0102</b> - explicit tape data block
+	</td></tr><tr><td><p>
+
+Chunk &amp;0102 is a raw representation of data bits stored on cassette. Unlike chunk &amp;0100 there are no implicit start/stop bits.
+
+	</p><p>
+
+The first byte of this chunk is used to calculate chunk length at the bit level. Only the first (chunk length * 8) - (value of first byte) bits are used in this chunk.
+
+	</p><p>
+
+Bit ordering is as per &amp;0100, so the least significant bit of any byte is the first bit on the tape.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0c0">
+
+<b>PSEUDO-CODE</b>
+
+<p></p><ul>
+
+<li>compute bit count for chunk - get chunk length, multiply it by 8 and subtract the value of the first byte. Store it to BitCount</li>
+<li>store zero to CurrentBit</li>
+<li>while CurrentBit < BitCount
+<ul>
+	<li>if (CurrentBit mod 8) = 0, read a new data byte from the chunk to NewByte</li>
+	<li>output the least significant bit of NewByte</li>
+	<li>shift NewByte right one position</li>
+	<li>increment CurrentBit</li>
+</ul>
+</li>
+
+</ul>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0104</b> - defined tape format data block
+	</td></tr><tr><td><p>
+
+This chunk holds byte data with specified non-standard start/stop/parity bits. It is analogous to &amp;0100 in that bytes of data are read from the UEF then packaged to produce the tape signal. Unlike &amp;0100, block packaging may include arbitrary stop and parity bits. Like &amp;0100 blocks always have an implicit start bit.
+
+</p><p>
+
+While processing this chunk, bytes are read from the source UEF and packaged into packets. The packet format is defined by the first three bytes in the chunk.
+
+</p><p>
+
+The first byte holds the number of data bits per packet, not counting start/stop/parity bits.
+
+</p><p>
+
+The second byte holds the ascii code for 'N', 'E' or 'O', which specifies that parity is not present, even or odd.
+
+</p><p>
+
+The third byte holds information concerning stop bits. If it is a positive number then it is a count of stop bits. If it is a negative number then it is a negatived count of stop bits to which an extra short wave should be added.
+
+</p><p>
+
+Positive numbers should be used wherever possible. Reproductions of original BBC and Electron material should only produce positive numbers if correctly encoded.
+
+</p><p>
+
+The total number of packets is equal to the chunk's length minus three. Bits in bytes are stored as in block &amp;0100, i.e. the least significant bit should appear on cassette first.
+
+</p><p>
+
+Data blocks are always stored in the chunk as whole byte quantities.  If the number of data bits is seven then the most significant bits of all bytes in the chunk are unused and should be zero.
+
+</p><p>
+
+Normal start bits should always be inserted into data, as per the implicit data chunk, &amp;0100.
+
+</p><p>
+
+For the BBC/Electron, the following formats may be encountered: 7E1, 7E2, 7O1, 7O2, 8E1, 8N2, 8O1. Format 8N1 would produce the same output as chunk &amp;0100.
+
+</p><p>
+
+For the Atom, data format will usually be 8N-1.
+
+</p><p></p>
+</td></tr><tr><td bgcolor="#c0c0c0">
+
+<b>PSEUDO-CODE</b> (NB: see phase notes at head of document)
+
+<p></p><ul>
+
+<li>let NumBitsPerPacket = number of data bits, per first byte in chunk</li>
+<li>make a note of parity, per second byte in chunk</li>
+<li>let StopBitCount = number of stop bits, per third byte in chunk</li>
+<li>if StopBitCount < 0 then negative StopBitCount (making it positive), make a note to incorporate an extra short wave</li>
+<!--<li>if StopCycleCount > 0 and data encoding format is 1200 baud then double StopCycleCount</li>
+<li>if StopCycleCount > 0 and data encoding format is 300 baud then multiply StopCycleCount by eight</li>-->
+<li>while bytes remain in UEF chunk
+<ul>
+	<li>output start bit - always a zero</li>
+	<li>read a byte from the UEF chunk, store it to NewByte</li>
+	<li>let InternalBitCount = NumBitsPerPacket</li>
+	<li>while InternalBitCount > 0
+	<ul>
+		<li>output least significant bit of NewByte</li>
+		<li>shift NewByte right one position</li>
+		<li>decrement InternalBitCount</li>
+	</ul>
+	</li>
+	<li>if parity is required, output parity bit</li>
+	<li>let InternalStopCount = StopBitCount</li>
+	<li>while InternalStopCount > 0
+	<ul>
+		<li>output a stop bit - always a one</li>
+		<li>decrement InternalStopCount</li>
+	</ul>
+	<li>if StopCycleCount was negative when first read then output a single wave (i.e. low pulse, then high pulse) at twice the base frequency</li>
+	</li>
+</ul>
+</li>
+
+</ul>
+<!--	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0105</b> - implicit start/stop bit Atom tape data block
+	</td></tr><tr><td><p>
+
+This chunk represents byte data stored on a cassette with Acorn's default start/stop bits (which are not reproduced) as with chunk &0100 but with 2 differences to be used for standard Atom files.
+
+</p><p>
+
+All stop bits are followed by 1 extra wave of twice the base frequency except the stop bit of the last byte.
+
+</p><p>
+
+The least significant bit of the first byte is the first bit to appear on the tape, the most significant the 8th, and so on. Hence bytewise values are the same as the bytes stored on cassette.
+
+
+</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0c0">
+<b>PSEUDO-CODE</b> (NB: see phase notes at head of document)
+
+<p></p><ul>
+
+<li>while bytes remain in UEF chunk
+<ul>
+	<li>output a zero bit (the start bit)</li>
+	<li>read a byte from the UEF chunk, store it to NewByte</li>
+	<li>let InternalBitCount = 8</li>
+	<li>while InternalBitCount > 0
+	<ul>
+		<li>output least significant bit of NewByte</li>
+		<li>shift NewByte right one position</li>
+		<li>decrement InternalBitCount</li>
+	</ul></li>
+	<li>output a one bit (the stop bit)</li>
+	<li>if bytes remaining in UEF chunk > 1 then output a wave of twice the base frequency</li>
+</ul></li>
+
+</ul> -->
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0110</b> - carrier tone (previously referred to as 'high tone')
+	</td></tr><tr><td><p>
+
+A run of carrier tone (i.e. cycles with a frequency of twice the base frequency), with a running length described in cycles by the first two bytes.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0c0">
+
+<b>PSEUDO-CODE</b> (NB: see phase notes at head of document)
+
+<p></p><ul>
+
+<li>read cycle count for chunk - first two bytes, store to CycleCount</li>
+<li>while CycleCount > 0
+<ul>
+	<li>output a single cycle at twice the current base frequency</li>
+	<li>decrement WaveCount</li>
+</ul>
+</li>
+
+</ul>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0111</b> - carrier tone (previously 'high tone') with dummy byte
+	</td></tr><tr><td><p>
+
+This chunk represents a run of carrier tone followed by 10 bits of data and then a second run of carrier tone.
+
+	</p><p>
+
+This four byte chunk is composed of two sets of two bytes - the first two describe the number of cycles in the tone before the dummy byte, and the second two describe the number of cycles in the tone after the dummy byte. The dummy byte always has value &amp;AA.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0c0">
+
+<b>PSEUDO-CODE</b> (NB: see phase notes at head of document)
+
+<p>
+
+<ul>
+<li>read 'before' cycle count for chunk - first two bytes, store to CycleCount</li>
+<li>while CycleCount > 0
+<ul>
+	<li>output a single cycle at twice the current base frequency</li>
+	<li>decrement CycleCount</li>
+</ul>
+</li>
+<li>output the folowing bit sequence (in English reading order): 0, 0, 1, 0, 1, 0, 1, 0, 1, 1</li>
+<li>read 'after' cycle count for chunk - final two bytes, store to CycleCount</li>
+<li>while CycleCount > 0
+<ul>
+	<li>output a single cycle at twice the current base frequency</li>
+	<li>decrement CycleCount</li>
+</ul>
+</li>
+</ul>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0112</b> - integer gap
+	</td></tr><tr><td><p>
+
+A gap in the tape - a length of time for which no sound is on the source audio casette. This chunk holds a two byte rest length counted relative to the base frequency. A value of n indicates a gap of 1/(2n*base frequency) seconds.
+
+</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0116</b> - floating point gap
+	</td></tr><tr><td><p>
+
+As per 0112, but the gap length is a floating point number measured in seconds.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0113</b> - change of base frequency
+	</td></tr><tr><td><p>
+
+The base frequency is a modal value, which is assumed to be 1200Hz when a UEF is open. If this chunk is encountered, the base frequency changes.
+
+	</p><p>
+
+This chunks contains a single floating point number, stating the new base frequency.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0114</b> - security cycles
+	</td></tr><tr><td><p>
+
+Security cycles are mainly found at the start of a run of carrier tone as an identification feature.  Rarely they are at the end of a run of carrier tone. They consist of cycles of the base frequency and twice the base frequency and sometimes have a leading and/or trailing pulse.
+
+</p><p>
+
+The first three bytes of this chunk (a 24 bit value) denote the number of 'cycles'. It is possible that the first and last may be only pulses.
+
+</p><p>
+
+The fourth byte holds the ASCII code for 'P' or 'W'. If it is 'P', the first cycle is replaced by a single high pulse.
+
+</p><p>
+
+The fifth byte again holds the ASCII code 'P' or 'W' which, if it is 'P' signifies that the last cycle is replaced by a low pulse.
+
+</p><p>
+
+If the fifth byte is 'P' the fourth byte must be 'W' but has no relevance.
+
+</p><p>
+
+If the 'cycles' follow a gap then the fourth byte can logically be 'P' or 'W'.  If the 'cycles' follow other cycles then the fourth byte will logically be 'W'.
+
+</p><p>
+
+This chunk never offends the general rule that the stored waveform consists only of gaps and pulses joined at zero crossings, and never creates an external or internal phase change.
+
+</p><p>
+
+The UEF is encoded with eight 'cycles' per byte.<br>
+Slow cycles (at the base frequency) are denoted by 0 bits.<br>
+Fast cycles (at twice the base frequency) are denoted by 1 bits.<br>
+Bits are ordered such that the most significant bit represents the first cycle on the tape.<br>
+Spare bits in the last byte should preferably be 0 bits.<br>
+When the number of cycles is 1:<br>
+<ul>
+<li>Only one of the fourth and fifth bytes may be 'P'</li>
+<li>If the fourth byte is 'P' the fifth byte must be 'W' but has no relevance</li>
+</ul>
+
+</p><p>
+
+<b>Examples:</b>
+
+</p><p>
+
+The sequence of cycles LSLLLSSLSSLLSL  will be stored as &0E, &00, &00, 'W', 'W', &9D, &2C. A sequence following other cycles having only 1 short pulse will be stored as &01, &00, &00, 'W', 'P', &00. A sequence following a gap having only 1 short pulse followed by 3 long waves will be stored as &04, &00, &00, 'P', 'W', &0E.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0c0">
+<b>PSEUDO-CODE</b> (NB: see phase notes at head of document)
+
+<p></p><ul>
+
+<li>let NumCycles = number of stored cycles, the first three bytes in chunk</li>
+<li>read the first bit from the chunk</li>
+<li>if fourth byte of the chunk is an ASCII 'P' then output a single high pulse of the frequency implied by the bit just read, read new bit from chunk, decrement NumWaves</li>
+<li>while NumWaves > 1
+<ul>
+	<li>read next bit from chunk</li>
+	<li>if it is a zero, output a single cycle at the base frequency</li>
+	<li>if it is a one, output a single cycle at twice the base frequency</li>
+	<li>decrement NumWaves</li>
+</ul></li>
+<li>if NumWaves is equal to 1
+<ul>
+<li>if fifth byte of chunk is an ASCII 'P' then output a single low pulse of the frequency implied by the final bit</li>
+<li>else fifth byte of chunk must be an ASCII 'W' so output a single cycle of the frequency implied by the final bit</li>
+</ul></li>
+
+</ul>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0115</b> - phase change
+	</td></tr><tr><td><p>
+
+This chunk contains a 16 bit unsigned value between 0 and 359, which determines the new phase.
+
+</p><p>
+
+The majority of professional cassettes have waves shifted 0 or 180 degrees. Before one of these chunks is met (i.e. immediately after opening a UEF) the phase shift should be taken to be 180 degrees.
+
+</p><p>
+
+If accurately representing a real life source tape, this chunk will only be found neighbouring a gap.
+
+</p><p>
+
+See the section entitled 'Notes on phase' towards the top of this document for a proper discussion of the effect of phase on the output waveform.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0117</b> - data encoding format change
+	</td></tr><tr><td><p>
+
+This chunk contains a 16 bit unsigned value and is used to select the new data encoding format. Upon opening a UEF, the "1200 baud" data encoding format described below should be adopted.
+
+	</p><p>
+
+If the value is 300 then the "300 baud" data encoding format is selected. From henceforth a '0' bit should be encoded as 4 cycles at the base frequency and a '1' bit as 8 cycles at twice the base frequency.
+
+	</p><p>
+
+If the value is 1200 then the "1200 baud" data encoding format is selected. From henceforth a '0' bit should be encoded as 1 cycle at the base frequency and a '1' bit as 2 cycles at twice the base frequency.
+
+	</p><p>
+
+All other values have undefined effect.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0120</b> - position marker
+	</td></tr><tr><td><p>
+
+This chunk contains a string offering a textual description of the significance of the location it sits at within the file purely for the benefit of human beings.
+
+	</p><p>
+
+For example, Repton 3 contains the game followed by a level editor, so this chunk could be used to mark the start of the editor files - allowing an emulator user can easily skip straight to those if desired.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0130</b> - tape set info
+	</td></tr><tr><td><p>
+
+This chunk allows the tape data mechanisms in UEF to be applied to a wide range of non-tape media, and sets the correct vocabulary and geometry for such use. All are modal values and UEF files are assumed to relate to single track, single sided tapes unless stated otherwise.
+
+	</p><p>
+
+	<table border="1"><tbody><tr><th>
+		Byte Offset
+	</th><th>
+		Length
+	</th><th>
+		Description
+	</th></tr><tr>
+		<td>0</td>
+		<td>1</td>
+		<td>
+
+Unsigned char - a byte that selects the appropriate vocabulary for the media. This does not place restrictions on the geometry of the media. Defined values are:
+
+<ul>
+<li><b>0: </b>'unit', 'position' (generic)</li>
+<li><b>1: </b>'tape', 'channel' (the most common setting; channels are rarely used as most tapes are mono)</li>
+<li><b>2: </b>'disc', 'track' (a record, CD or Minidisc)</li>
+<li><b>3: </b>'tape', 'cue' (DAT, modern VHS soundtrack)</li>
+<li><b>4: </b>'cartridge', 'track' (8-Track)</li>
+</ul>
+
+		</td></tr><tr>
+		<td>1</td>
+		<td>1</td>
+		<td>
+
+Unsigned char - number of tapes. Maximum 127 tapes.
+
+		</td></tr><tr>
+		<td>2</td>
+		<td>1</td>
+		<td>
+
+Unsigned char - Number of independent channels. Most cassettes are mono and this value will be 1.  For disc media this byte contains the greatest number of audio tracks on any of the discs.
+
+		</td></tr></tbody></table>
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0131</b> - start of tape side
+	</td></tr><tr><td><p>
+
+This chunk deliminates the start position of a new tape side
+
+	</p><p>
+
+	<table border="1"><tbody><tr><th>
+		Byte Offset
+	</th><th>
+		Length
+	</th><th>
+		Description
+	</th></tr><tr>
+		<td>0</td>
+		<td>1</td>
+		<td>
+
+Unsigned char - Tape ID (0..126) and side bit. The maximum value of bits 0 to 6 is given by chunk &amp;0130. Bit 7 signifies the side: 0 for side A, 1 for side B.
+
+		</td></tr><tr>
+		<td>1</td>
+		<td>1</td>
+		<td>
+
+Unsigned char - Channel number, starting from 0 each side.  The maximum is given by chunk &amp;0130.   For disc media this is the track number.  For the sake of consistency the left channel of a stereo cassette is 0, the right channel 1.
+
+		</td></tr><tr>
+		<td>2</td>
+		<td>*</td>
+		<td>
+
+<p>NULL terminated ASCII string - Side description. See chunk &amp;0120.  This is a space to record the version on this particular side (e.g. 'Electron' or 'Infinite Lives'), or the side itself in the manufacturer's preferred style (e.g. 'Side A', 'Side 1', 'Label side'). For Minidiscs this can record the track title.</p>
+<p>For compatibility purposes, string length should be restrained to a maximum of 255 characters.</p>
+
+		</td></tr></tbody></table>
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#33ff33">
+
+		<h2><a name="02">&amp;02xx set - Disc chunks</a></h2>
+		<p><a href="#table">Back to chunk index</a></p>
+
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0200</b> - disc info
+	</td></tr><tr><td><p>
+
+Gives an overview of the included disc thusly:
+
+	<table border="1"><tbody><tr><th>
+		Byte Offset
+	</th><th>
+		Length
+	</th><th>
+		Description
+	</th></tr><tr>
+		<td>0</td>
+		<td>1</td>
+		<td>
+number of heads minus one. Values greater than 127 are invalid. Notice
+that since each head is considered to potentially read two sides of a
+disc platter, this value will be 0 for single sided and double sided
+disc images alike. </td></tr><tr>
+		<td>1</td>
+		<td>2</td>
+		<td>
+
+sector length in bytes of implicitly defined disc sides
+
+		</td>
+		</tr><tr>
+		<td>3</td>
+		<td>1</td>
+		<td>
+
+number of sectors per track within implicitly defined disc sides
+
+		</td></tr><tr>
+		<td>4</td>
+		<td>1</td>
+		<td>
+
+number of tracks within implicitly defined disc sides
+
+		</td></tr><tr>
+		<td>5</td>
+		<td>1</td>
+		<td>
+
+a one byte filing system identifier, one of:
+
+		<ul>
+
+<li>0: Undefined or not specified</li>
+<li>1: Acorn 8271 DFS</li>
+<li>2: Watford DFS 62</li>
+<li>3: Acorn ADFS</li>
+<li>4: Acorn 1770 DFS</li>
+<li>5: Solidisk </li>
+<li>6: OPUS DDOS</li>
+
+		</ul><p>
+The value of this is intended to tell you the catalogue type of the
+disc, and therefore if applicable which filing system ROM to
+'recommend' to the user. This should be interesting to emulators that
+like to be vocal towards their users, but may also be used by those
+which like to implement their own filing systems compatible with the
+originals but without the hassle of a working hardware emulation. </p><p>
+
+If a UEF wants to 'force' an emulator to adopt a particular ROM, it should use the ROM hint chunk &amp;0008.
+
+		</p></td></tr></tbody></table>
+	<p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0201</b> - single implicit disc side
+	</td></tr><tr><td><p>
+First comes a one byte side/head id, in which the top bit represents
+the disc side - not set implies side 1, set implies side 2. The low 7
+bits form the disc head id. </p><p>
+Then following are (length of chunk - 1) bytes, stored such that the
+first byte is the first byte on the first sector of the first track,
+the (sector length)th byte is the first byte of the second sector, and
+so on. </p><p>
+The stuff that is not normally seen by any component above the drive
+controller - the sector headers, (M)FM syncs, etc are left implicit.
+This chunk correlates directly to the SSD/DSD/ADF style of disc image. </p><p>
+In many cases, there will not be as many bytes stored here as
+calculating (bytes per sector)*(sectors per track)*(tracks per side)
+seems to imply. This situation indicates that the value of the
+remaining bytes on the disc is not important, although the remaining
+sectors and tracks were formatted. </p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0202</b> - multiplexed disc side
+	</td></tr><tr><td><p>
+
+As above but the disc data (after the side id) is multiplexed.
+
+	</p><p></p>
+<!--	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0210</b> - explicit disc track
+	</td></tr><tr><td><p>
+This chunk stores raw magnetic polarity changes at the platter level.
+Before that data are three data fields. A one byte field identifies
+side and head number ala chunk &amp;0201. This is followed by another
+byte, signifying track number. Finally a two byte length count follows.
+This is the number of linearly spaced samples that record the entire
+track. </p><p>
+There then follows a list of results from reading the disc surface - a
+0 anywhere the polarity did not change inbetween samples and a 1
+wherever it did. This is equivalent to the raw underlying FM or MFM
+data that the WD177x and 8271 chips see. </p><p>
+The entire track is sampled, so an emulator can calculate data density
+by considering the number of samples and the rotation rate of the
+device. Bits are stored in bytes so that the lsb is considered to have
+come first on the disc. </p><p>
+
+No multiplexed way of duplicating data stored in this configuration is available.
+
+	</p><p></p>-->
+	</td></tr><tr><td bgcolor="#33ff33">
+
+		<h2><a name="03">&amp;03xx set - ROM chunks</a></h2>
+		<p><a href="#table">Back to chunk index</a></p>
+
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0300</b> - standard machine rom
+	</td></tr><tr><td><p>
+Contains some sort of ROM, which are usually 16kb in size. The first
+byte is a type byte. It can contain one of the following values: </p><ul>
+
+<li>0 - type unspecified</li>
+<li>1 - this is the OS ROM</li>
+<li>2 - this is the BASIC ROM</li>
+<li>3 - this is a language ROM</li>
+<li>4 - this is a utility ROM</li>
+<li>5 - a filing system ROM</li>
+<li>6 - a hardware driver</li>
+<li>7 - a game ROM</li>
+
+	</ul><p>
+The second byte is a slot recommendation, in which the high four bits
+should be zero. It is useful as on some hardware inserting a language
+or utility ROM in a slot above BASIC will cause it to boot instead,
+which may be the desired effect. For the OS ROM, this value is
+undefined, as it does not appear in a slot. </p><p>
+It should be noted that a slot recommendation is only a hint - it may
+be ignored by software if required. E.g. Electron emulators will have
+difficulty honuring a slot recommendation for the BASIC ROM because on
+that hardware the BASIC ROM is a special case, occupying more than one
+slot, and similarly they may not allow any ROM to occupy slots 8 or 9
+since they are reserved for the keyboard. </p><p>
+The final part of this chunk is the ROM itself. As it will occupy a
+16kb hole in the memory space, it shouldn't be larger than 16kb,
+however some ROMs are smaller (e.g. the Electron Plus 1 ROM is only
+4kb), and should be considered to 'repeat' over the 16kb memory address
+range in that case. </p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0301</b> - multiplexed machine rom
+	</td></tr><tr><td><p>
+
+As above, but the ROM data is multiplexed.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#33ff33">
+
+		<h2><a name="04">&amp;04xx set - State snapshots</a></h2>
+		<p><a href="#table">Back to chunk index</a></p>
+
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0400</b> - 6502 standard state
+	</td></tr><tr><td><p>
+Contains 8 bytes. The first is the 'update byte'. Common to all the
+snapshot chunks, the 'update byte' contains a non-zero value if the
+emulator is supposed to update this chunk when closed. </p><p>
+
+The next five bytes are the a, p (status), x, y and s registers in that order. Then the two byte program counter follows.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0401</b> - Electron ULA state
+	</td></tr><tr><td><p>
+For Electron emulators, this chunk contains the entire state of the ULA
+(the video circuits, cassette interface, sound generator and ROM
+pager). Format is: </p><p>
+	<table border="1"><tbody><tr>
+		<th>Byte Offset</th>
+		<th>Length</th>
+		<th>Description</th>
+	</tr><tr>
+		<td>0</td>
+		<td>1</td>
+		<td>
+
+'Update byte'. Contains a non-zero value if the emulator should update this chunk when closed.
+
+		</td>
+	</tr><tr>
+		<td>1</td>
+		<td>2</td>
+		<td>
+Interrupt control, followed by interrupt status (SHEILA &amp;FE00).
+Should be used to determine which interrupts are currently active as
+well as which are enabled. </td>
+	</tr><tr>
+		<td>3</td>
+		<td>2</td>
+		<td>
+
+SHEILA &amp;FE02, followed by SHEILA &amp;FE03 - in total screen start address
+		</td>
+	</tr><tr>
+		<td>5</td>
+		<td>1</td>
+		<td>
+
+SHEILA &amp;FE04 - cassette shift register
+
+		</td>
+	</tr><tr>
+		<td>6</td>
+		<td>2</td>
+		<td>
+First byte: value of &amp;FE05, principly for determining the value of
+the page enable bit. Second byte: ROM currently paged in (low 4 bits).
+High 4 bits are undefined. </td>
+	</tr><tr>
+		<td>8</td>
+		<td>10</td>
+		<td>
+
+Remainder of SHEILA bytes, in ascending order (i.e. FE06, then FE07...)
+
+		</td>
+	</tr><tr>
+		<td>18</td>
+		<td>4</td>
+		<td>
+Number of 16Mhz cycles since last 'end of display' interrupt signal
+(regardless of whether this interrupt was actually enabled at the
+time). </td>
+	</tr></tbody></table>
+	<p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0402</b> - WD1770 state
+	</td></tr><tr><td><p>
+The assumption is made that a snapshot cannot be saved while the WD1770
+is in the middle of an operation. The first byte, as with all other
+state snapshots, the 'update byte' - containing a non-zero value if the
+emulator should update this chunk when closed. </p><p>
+
+The next four bytes are, in order : the status byte, the track byte, the sector byte, and the data byte.
+
+	</p><p>
+The final byte stores the disc drive status. As this varies from
+machine to machine, it is in a standard form. Bits 0-&gt;2 are the
+current drive number, in the range 0..7, bit 3 is the side select bit
+(high = side 2), and bit 4 is the double density select bit (high =
+double density). </p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0403</b> - JIM paging register state
+	</td></tr><tr><td><p>
+
+A two byte chunk - the usual 'update byte' followed by the last value written to the JIM paging register.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0410</b> - standard memory data
+	</td></tr><tr><td><p>
+
+Following the usual 'update byte', a second describes which memory is stored. It has one of the following values:
+
+	</p><ul>
+
+<li>0 - this memory data comes from the standard RAM, located from location &amp;0000 in the 6502 memory map upwards</li>
+<li>1 - this memory data comes from shadow RAM</li>
+<li>2 - this memory data is from the JIM page</li>
+<li>255 - 'patch memory'</li>
+
+	</ul><p>
+Upon encountering 'patch memory', the next three bytes should be read.
+The first is a base address, with a value equivalent to one in the
+above table other than 255. The next two are an offset into that area
+to which the following data should be loaded. </p><p>
+For example, suppose the chunk started &amp;ff, &amp;00, &amp;12,
+&amp;34 - then the following data should be loaded at position
+&amp;3412 in normal RAM. </p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0411</b> - multiplexed memory data
+	</td></tr><tr><td><p>
+
+As above, but with multiplexed data.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0412</b> - multiplexed (partial) 6502 state
+	</td></tr><tr><td><p>
+
+Intended to coexist with chunk &amp;0400. After the 'update byte', contains multiplexed entries for A, P, X and Y in that order.
+
+	</p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;0420</b> - Slogger Master RAM Board State
+	</td></tr><tr><td><p>
+After the 'update byte', this chunk contains one other byte indicating
+the mode of a Slogger Master RAM board. That byte may have value zero
+to indicate that the board is disabled, one to indicate that it is in
+turbo mode or two to indicate that it is in shadow mode. </p><p></p>
+	</td></tr><tr><td bgcolor="#33ff33">
+
+		<h2><a name="ff">FFxx set - reserved / non-emulator portable</a></h2>
+		<p><a href="#table">Back to chunk index</a></p>
+
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunks &amp;FF01 -&gt; &amp;FFFF</b> - reserved / non-emulator portable
+	</td></tr><tr><td><p>
+These chunks are reserved for you to do anything you like with. For
+example, my emulator stores a nice picture for its 'about' box, a GUI
+font and other small things in these chunks. An emulator should not
+assume it can understand these chunks unless it recognise
+the value of chunk &amp;FF00. </p><p></p>
+	</td></tr><tr><td bgcolor="#c0c0ff">
+		<b>Chunk &amp;FF00</b> - emulator identification string
+	</td></tr><tr><td><p>
+This chunk is a NULL terminated string. It dictates which emulator
+output these FF?? chunks, and therefore allow your emulator to decide
+whether it knows their meaning. </p><p>
+To ensure this doesn't clash with anyone else's chosen identification
+string, I suppose something like the name of your emulator is a good
+choice. </p><p></p>
+	</td></tr></tbody></table>
+    <p>
+      <a href="http://validator.w3.org/check?uri=referer"><img border="0"
+          src="http://www.w3.org/Icons/valid-html40"
+          alt="Valid HTML 4.0!" height="31" width="88"></a>
+    </p>
+</body></html>

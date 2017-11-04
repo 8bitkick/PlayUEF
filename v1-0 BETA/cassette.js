@@ -13,7 +13,6 @@
 
 
 function Cassette(length, position, title, baud, version) {
-  "use strict";
 
   function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
     //x+=radius;y+=radius;
@@ -53,9 +52,9 @@ function Cassette(length, position, title, baud, version) {
   var c	= document.getElementById("cassette");
   var ctx = c.getContext("2d");
 
-  var tapeBody = "#444444";
-  var tapeLight = "#555555";
-  var tapeDark = "#222222";
+  tapeBody = "#444444";
+  tapeLight = "#555555";
+  tapeDark = "#222222";
   // Tape body
   ctx.fillStyle = tapeBody;
   roundRect(ctx, 0, 0, 400, 260, 10, true, false);
@@ -94,8 +93,8 @@ function Cassette(length, position, title, baud, version) {
   ctx.fillStyle = '#440800';
   // cheat a bit as radius of curature doesnt change
 
-  var leftspool = ((length - position)/900)*30;
-  var rightspool = (position/900)*30;
+  leftspool = ((length - position)/900)*30;
+  rightspool = (position/900)*30;
   circle(ctx,280,120,40+rightspool);
   circle(ctx,120,120,40+leftspool);
 
@@ -113,7 +112,7 @@ function Cassette(length, position, title, baud, version) {
 
   // Spool teeth
   ctx.strokeStyle="#eeeeee";
-  var rotation = (position-(Math.floor(position)))*60;
+  rotation = (position-(Math.floor(position)))*60;
   for (var angle=0+rotation; angle <= 360+rotation; angle+=60){
     ctx.beginPath();
     ctx.moveTo(280+(30*Math.cos((Math.PI/180)*angle)), 120-(30*Math.sin((Math.PI/180)*angle)));
@@ -160,12 +159,11 @@ function Cassette(length, position, title, baud, version) {
     ctx.fillText("baud",347,124);
 
     ctx.fillText("version",400-347,110);
-    ctx.font="9px Arial";
     ctx.fillText(version,400-347,124);
 
     // sticker stripes
-    var darkColors = ["#0ba5e8","#ad1a93", "#eb2529","#f57819", "#fdd70b", "#66c536"];
-    var size = 4;
+    darkColors = ["#0ba5e8","#ad1a93", "#eb2529","#f57819", "#fdd70b", "#66c536"];
+    size = 4;
     for(var i = 0; i < 6; i++) {
       ctx.fillStyle = darkColors[5-i];
       ctx.fillRect(25,190-((i+1)*size),350,size*.8);
