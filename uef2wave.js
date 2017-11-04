@@ -138,7 +138,7 @@ uef2wave.prototype.decode = function() {
         this.uefChunks.push({op:"writeByte", args:[0xAA], header:""});
         this.uefChunks.push({op:"carrierTone", args:[afterCycles]});
 
-        sampleLength += (samplesPerBit * (beforeCycles+afterCycles))+10;
+        sampleLength += (samplesPerBit * (beforeCycles+afterCycles+10));
         break;
 
         case 0x12: // 0x0112 Integer gap
