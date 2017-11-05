@@ -12,17 +12,6 @@
 // http://electrem.emuunlim.com/UEFSpecs.htm
 // https://www.stairwaytohell.com/essentials/uef2wave.py
 //
-// Implemented chunks: 0x0100, 0x0110, 0x1111, 0x0112
-//
-// Fudged chunks: (not believed to impact game loading)
-// 0x0116 - floating point gap is approximated to nearest 2 cycles
-//
-// 0x0113, 0x0115 - phase and freq change ignored
-// (seems to usually reflect mechanical variance of original cassette player behavior
-// Could be implemented fairly easily but will affect speed of conversion)
-//
-// Next on to-do list - 0x0104 defined data block (for Acorn Atom) and 0x0114 security cycles
-
 
 
 var uef2wave = function(uefData, baud, sampleRate, stopCycles, phase, carrier){
@@ -52,7 +41,7 @@ uef2wave.prototype.isValidUEF = function() {
 uef2wave.prototype.decode = function() {
   var samplesPerBit  = Math.floor(this.sampleRate / this.baud);
   var sampleLength   = 0;
-  var uefPos         = 12; // skip over "UEF File!"
+  var nextChunk      = 12; // skip over "UEF File!"
   var uefDataLength  = this.uefData.length;
   var firstBlock     = true; // track to reduce firstBlock carrier tones if carrier=0
   var carrier        = this.carrier;
@@ -74,7 +63,7 @@ uef2wave.prototype.decode = function() {
 
   var hex = function (value) {return ("00000000" + value.toString(16)).substr(-8);}
 
-  var warningLog = function (message) {console.log(message); return "WARNING: Unsupported UEF chunks! See JS console<br>";}
+  var warningLog = function (message) {console.log("WARNING! Unsupported chunk: "+message); return "WARNING: Unsupported UEF chunks! See JS console<br>";}
 
   // Cassette Filing System header http://beebwiki.mdfs.net/Acorn_cassette_format
   CFSheader = function(data){
@@ -87,37 +76,37 @@ uef2wave.prototype.decode = function() {
     return filename+" "+(("00"+blockNumber.toString(16)).substr(-2))+" "+hex(loadAddress)+" "+hex(executionAddress);
   }
 
-  // Skip the contents header
-  while (this.uefData[uefPos+1]==0x00) {
-    uefPos += doubleAt(this.uefData,uefPos+2) + 6;
-  }; nextChunk = uefPos;
-
 
   // Scan UEF data array for ChunkIDs and parse length of final sample
-  console.log('Unsupported UEF chunk types logged below:');
   while (nextChunk < uefDataLength) {
-    uefPos = nextChunk;
-    // Test for UEF chunk header
-    if (this.uefData[uefPos+1]==0x01) {
+      var uefPos = nextChunk;
 
-      var chunkStart = uefPos + 6;
-      var nextChunk   = doubleAt(this.uefData,uefPos+2) + uefPos + 6;
+      var chunkID     = wordAt(this.uefData,uefPos);
+      var chunkLength = doubleAt(this.uefData,uefPos+2);
+      var chunkStart  = uefPos + 6;
+      var nextChunk   = chunkStart + chunkLength;
 
-      switch (this.uefData[uefPos]){
+      switch (chunkID){
 
-        case 0x00: // 0x0100 implicit start/stop bit tape data block
+        case 0x0000: // 0x0000 origin information chunk
+        //----------------------------------------------------------
+        var info = String.fromCharCode.apply(null,(this.uefData.slice(chunkStart, nextChunk)));
+        console.log("UEF info: "+info);
+        break;
+
+
+        case 0x0100: // 0x0100 implicit start/stop bit tape data block
         //----------------------------------------------------------
         var data = new Uint8Array(this.uefData.slice(chunkStart, nextChunk));
         if (data[0]==0x2A && data.length>24) {header = CFSheader(data.slice(1, 24));} else {header=""}; // Request BBC micro block header summary
         this.uefChunks.push({op:"writeData", args:[chunkStart,nextChunk], data:data, header:header});
 
-        var blockLength = nextChunk - chunkStart;
-        sampleLength += Math.floor(samplesPerBit*(blockLength)*10);  // acorn have 1 start 1 stop bit per 8 bit byte = 10
+        sampleLength += (samplesPerBit*(chunkLength)*10);  // acorn have 1 start 1 stop bit per 8 bit byte = 10
         firstBlock = false;
         break;
 
 
-        case 0x10: // 0x0110 carrier tone
+        case 0x0110: // 0x0110 carrier tone
         //----------------------------------------------------------
         var cycles = wordAt(this.uefData,chunkStart);
         // CARRIER=0 reduces interblock carrier tone section to 120 cycles
@@ -130,7 +119,9 @@ uef2wave.prototype.decode = function() {
         sampleLength += (samplesPerBit * cycles);
         break;
 
-        case 0x11: // 0x0111 carrier tone (previously high tone) with dummy byte at byte
+
+        case 0x0111: // 0x0111 carrier tone (previously high tone) with dummy byte at byte
+        //----------------------------------------------------------
         var beforeCycles = wordAt(this.uefData,chunkStart);
         var afterCycles  = wordAt(this.uefData,chunkStart+2);
         if (carrier > 0) {beforeCycles*=carrier; afterCycles*=carrier;}; // Carrier length factor
@@ -141,20 +132,24 @@ uef2wave.prototype.decode = function() {
         sampleLength += (samplesPerBit * (beforeCycles+afterCycles+10));
         break;
 
-        case 0x12: // 0x0112 Integer gap
+
+        case 0x0112: // 0x0112 Integer gap
         //----------------------------------------------------------
         var n = wordAt(this.uefData,chunkStart);
         var cycles = Math.ceil((this.baud/1000)*2*n); // Conservative gaps as we dont support MOTOR OFF
         this.uefChunks.push({op:"integerGap", args:[cycles]});
+
         sampleLength += samplesPerBit * cycles;
         firstBlock = true;
         break;
 
-        case 0x16: // 0x0116 floating point gap at byte '+uefPos+' value '+floatGap);
+
+        case 0x0116: // 0x0116 floating point gap
+        //----------------------------------------------------------
         var floatGap = floatAt(this.uefData,chunkStart);
-        // We're cheating and converting to an integerGap
-        var cycles = Math.ceil(floatGap * this.baud);
+        var cycles = Math.ceil(floatGap * this.baud); // We're cheating and converting to an integerGap
         this.uefChunks.push({op:"integerGap", args:[cycles]});
+
         sampleLength += samplesPerBit * cycles;
         firstBlock = true;
         break;
@@ -162,60 +157,55 @@ uef2wave.prototype.decode = function() {
 
         // Ignored
         // --------
-        case 0x13: // 0x0113 change of base frequency at byte
-        // Capturing mechanical variance in cassette deck in Bonecruncher. Can usually be ignored?
-        // var baseFreq = floatAt(this.uefData,chunkStart);
-        // if ((baseFreq < 1150) || (baseFreq > 1300)) {this.warning = warningLog('0x0113 change of base frequency at byte '+uefPos);}
+        // Capturing mechanical variance in cassette deck can usually be ignored?
+        case 0x0113: // 0x0113 change of base frequency at byte
         break;
 
-        case 0x15: // 0x0115 phase change
-        //this.warning = warningLog('0x0115 phase change at byte '+uefPos);
+        case 0x0115: // 0x0115 phase change
         break;
 
 
         // Still to implement
         // ------------------
-        case 0x01:
+        case 0x0101:
         this.warning = warningLog('0x0101 multiplexed data block at byte '+uefPos);
         break;
 
-        case 0x02:
+        case 0x0102:
         this.warning = warningLog('0x0102 explicit tape data block at byte '+uefPos);
         break;
 
-        case 0x03:
+        case 0x0103:
         this.warning = warningLog('0x0103 multiplexed data block at byte '+uefPos);
         break;
 
-        case 0x04:
+        case 0x0104:
         this.warning = warningLog('0x0104 defined tape format data block at byte '+uefPos);
         break;
 
-        case 0x14:
+        case 0x0114:
         this.warning = warningLog('0x0114 security cycles at byte '+uefPos);
         break;
 
-        case 0x17:
+        case 0x0117:
         this.warning = warningLog('0x0117 data encoding format change at byte '+uefPos);
         break;
 
-        case 0x20:
+        case 0x0120:
         this.warning = warningLog('0x0120 position marker at byte '+uefPos);
         break;
 
-        case 0x30:
+        case 0x0130:
         this.warning = warningLog('0x0130 tape set info at byte '+uefPos);
         break;
 
-        case 0x31:
+        case 0x0131:
         this.warning = warningLog('0x0131 start of tape side at byte '+uefPos);
         break;
 
-
         default:
-        console.log('*** SKIPPED CHUNK HEADER '+String.fromCharCode(this.uefData[uefPos])+' at '+uefPos);nextChunk++;
+        this.warning = warningLog("0x"+hex(chunkID).substring(4,8)+" at byte "+uefPos);
       }
-    } else {console.log('*** SKIPPED CHUNK HEADER '+String.fromCharCode(this.uefData[uefPos+1])+' at '+uefPos+1);nextChunk++;}
   }
   console.log(this.uefChunks.length+" UEF chunks read");
   return sampleLength;
