@@ -108,7 +108,7 @@ uef2wave.prototype.decode = function() {
         case 0x00: // 0x0100 implicit start/stop bit tape data block
         //----------------------------------------------------------
         var data = new Uint8Array(this.uefData.slice(chunkStart, nextChunk));
-        if (data[0]==0x2A) {header = CFSheader(data.slice(1, 24));} else {header=""}; // Request BBC micro block header summary
+        if (data[0]==0x2A && data.length>24) {header = CFSheader(data.slice(1, 24));} else {header=""}; // Request BBC micro block header summary
         this.uefChunks.push({op:"writeData", args:[chunkStart,nextChunk], data:data, header:header});
 
         var blockLength = nextChunk - chunkStart;
