@@ -150,6 +150,7 @@ function Cassette(length, position, title, baud, version) {
     ctx.fillStyle = '#111111';
     ctx.textAlign = 'center';
     ctx.font="16px Arial";
+    if (title.length > 40) {ctx.font="10px Arial";};
 
     ctx.fillText(title,200,52);
 
