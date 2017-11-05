@@ -181,9 +181,4 @@ function Cassette(length, position, title, baud, version) {
     ctx.fillStyle = "rgba(33,33,33, 0.5)";
     ctx.fillRect(35+45,80,330-90,10);
 
-
-    // DELETE
-    var dataURL = c.toDataURL();
-    document.getElementById('cassette').src = dataURL;
-
   };
