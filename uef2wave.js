@@ -30,15 +30,16 @@ var uef2wave = function(uefData, baud, sampleRate, stopCycles, phase, carrier){
   this.stopCycles = stopCycles;
   this.phase =  phase;
   this.uefChunks = [];
-  this.warning = "";
   this.carrier = carrier;
+  this.sampleLength = 0;
+  this.fails = 0;
 };
 
 uef2wave.prototype.isValidUEF = function() {
   return ((String.fromCharCode.apply(null,this.uefData.slice(0, 9)) == "UEF File!"));
 };
 
-uef2wave.prototype.decode = function() {
+uef2wave.prototype.decodeUEF = function() {
   var samplesPerBit  = Math.floor(this.sampleRate / this.baud);
   var sampleLength   = 0;
   var nextChunk      = 12; // skip over "UEF File!"
@@ -63,8 +64,6 @@ uef2wave.prototype.decode = function() {
 
   var hex = function (value) {return ("00000000" + value.toString(16)).substr(-8);}
 
-  var warningLog = function (message) {console.log("WARNING! Unsupported chunk: "+message); return "WARNING: Unsupported UEF chunks! See JS console<br>";}
-
   // Cassette Filing System header http://beebwiki.mdfs.net/Acorn_cassette_format
   CFSheader = function(data){
     function isZero(element) {return element == 0;}
@@ -79,144 +78,115 @@ uef2wave.prototype.decode = function() {
 
   // Scan UEF data array for ChunkIDs and parse length of final sample
   while (nextChunk < uefDataLength) {
-      var uefPos = nextChunk;
+    var uefPos = nextChunk;
 
-      var chunkID     = wordAt(this.uefData,uefPos);
-      var chunkLength = doubleAt(this.uefData,uefPos+2);
-      var chunkStart  = uefPos + 6;
-      var nextChunk   = chunkStart + chunkLength;
+    var chunkID     = wordAt(this.uefData,uefPos);
+    var chunkLength = doubleAt(this.uefData,uefPos+2);
+    var chunkStart  = uefPos + 6;
+    var nextChunk   = chunkStart + chunkLength;
 
-      switch (chunkID){
+    switch (chunkID){
 
-        case 0x0000: // 0x0000 origin information chunk
-        //----------------------------------------------------------
-        var info = String.fromCharCode.apply(null,(this.uefData.slice(chunkStart, nextChunk)));
-        console.log("UEF info: "+info);
-        break;
+      case 0x0000: // 0x0000 origin information chunk
+      var info = String.fromCharCode.apply(null,(this.uefData.slice(chunkStart, nextChunk)));
+      console.log("UEF info: "+info);
+      break;
 
+      case 0x0100: // 0x0100 implicit start/stop bit tape data block
+      var data = new Uint8Array(this.uefData.slice(chunkStart, nextChunk));
+      if (data[0]==0x2A && data.length>24) {header = CFSheader(data.slice(1, 24));} else {header=""}; // Request BBC micro block header summary
+      this.uefChunks.push({op:"writeData", args:[chunkStart,nextChunk], data:data, header:header});
+      sampleLength += (samplesPerBit*(chunkLength)*10);  // 1 start 1 stop bit per 8 bit byte = 10
+      firstBlock = false;
+      break;
 
-        case 0x0100: // 0x0100 implicit start/stop bit tape data block
-        //----------------------------------------------------------
-        var data = new Uint8Array(this.uefData.slice(chunkStart, nextChunk));
-        if (data[0]==0x2A && data.length>24) {header = CFSheader(data.slice(1, 24));} else {header=""}; // Request BBC micro block header summary
-        this.uefChunks.push({op:"writeData", args:[chunkStart,nextChunk], data:data, header:header});
+      case 0x0110: // 0x0110 carrier tone
+      var cycles = wordAt(this.uefData,chunkStart);
+      if (carrier==0 && firstBlock==false) {cycles = 120;} // CARRIER=0 reduces interblock carrier tone section to 120 cycles
+      else {cycles = Math.ceil((this.baud/1200)*cycles);}; // length of preamble carrier tone relative to 1200Hz
+      if (carrier > 0) {cycles*=carrier;}; // Carrier length factor
+      this.uefChunks.push({op:"carrierTone", args:[cycles]});
+      sampleLength += (samplesPerBit * cycles);
+      break;
 
-        sampleLength += (samplesPerBit*(chunkLength)*10);  // acorn have 1 start 1 stop bit per 8 bit byte = 10
-        firstBlock = false;
-        break;
+      case 0x0111: // 0x0111 carrier tone (previously high tone) with dummy byte at byte
+      var beforeCycles = wordAt(this.uefData,chunkStart);
+      var afterCycles  = wordAt(this.uefData,chunkStart+2);
+      if (carrier > 0) {beforeCycles*=carrier; afterCycles*=carrier;}; // Carrier length factor
+      this.uefChunks.push({op:"carrierTone", args:[beforeCycles]});
+      this.uefChunks.push({op:"writeByte", args:[0xAA], header:""});
+      this.uefChunks.push({op:"carrierTone", args:[afterCycles]});
+      sampleLength += (samplesPerBit * (beforeCycles+afterCycles+10));
+      break;
 
+      case 0x0112: // 0x0112 Integer gap
+      var n = wordAt(this.uefData,chunkStart);
+      var cycles = Math.ceil((this.baud/1000)*2*n); // Conservative gaps as we dont support MOTOR OFF
+      this.uefChunks.push({op:"integerGap", args:[cycles]});
+      sampleLength += samplesPerBit * cycles;
+      firstBlock = true;
+      break;
 
-        case 0x0110: // 0x0110 carrier tone
-        //----------------------------------------------------------
-        var cycles = wordAt(this.uefData,chunkStart);
-        // CARRIER=0 reduces interblock carrier tone section to 120 cycles
-        if (carrier==0 && firstBlock==false) {cycles = 120;}
-        // length of preamble carrier tone relative to 1200Hz
-        else {cycles = Math.ceil((this.baud/1200)*cycles);};
-        if (carrier > 0) {cycles*=carrier;}; // Carrier length factor
-        this.uefChunks.push({op:"carrierTone", args:[cycles]});
-
-        sampleLength += (samplesPerBit * cycles);
-        break;
-
-
-        case 0x0111: // 0x0111 carrier tone (previously high tone) with dummy byte at byte
-        //----------------------------------------------------------
-        var beforeCycles = wordAt(this.uefData,chunkStart);
-        var afterCycles  = wordAt(this.uefData,chunkStart+2);
-        if (carrier > 0) {beforeCycles*=carrier; afterCycles*=carrier;}; // Carrier length factor
-        this.uefChunks.push({op:"carrierTone", args:[beforeCycles]});
-        this.uefChunks.push({op:"writeByte", args:[0xAA], header:""});
-        this.uefChunks.push({op:"carrierTone", args:[afterCycles]});
-
-        sampleLength += (samplesPerBit * (beforeCycles+afterCycles+10));
-        break;
-
-
-        case 0x0112: // 0x0112 Integer gap
-        //----------------------------------------------------------
-        var n = wordAt(this.uefData,chunkStart);
-        var cycles = Math.ceil((this.baud/1000)*2*n); // Conservative gaps as we dont support MOTOR OFF
-        this.uefChunks.push({op:"integerGap", args:[cycles]});
-
-        sampleLength += samplesPerBit * cycles;
-        firstBlock = true;
-        break;
+      case 0x0116: // 0x0116 floating point gap
+      var floatGap = floatAt(this.uefData,chunkStart);
+      var cycles = Math.ceil(floatGap * this.baud); // We're cheating and converting to an integerGap
+      this.uefChunks.push({op:"integerGap", args:[cycles]});
+      sampleLength += samplesPerBit * cycles;
+      firstBlock = true;
+      break;
 
 
-        case 0x0116: // 0x0116 floating point gap
-        //----------------------------------------------------------
-        var floatGap = floatAt(this.uefData,chunkStart);
-        var cycles = Math.ceil(floatGap * this.baud); // We're cheating and converting to an integerGap
-        this.uefChunks.push({op:"integerGap", args:[cycles]});
+      // Ignored
+      // --------
+      // Capturing mechanical variance in cassette deck can usually be ignored?
+      case 0x0113: this.uefChunks.push({op:"ignore", args:["0x0113 change of base frequency", uefPos]});
+      break;
 
-        sampleLength += samplesPerBit * cycles;
-        firstBlock = true;
-        break;
-
-
-        // Ignored
-        // --------
-        // Capturing mechanical variance in cassette deck can usually be ignored?
-        case 0x0113: // 0x0113 change of base frequency at byte
-        break;
-
-        case 0x0115: // 0x0115 phase change
-        break;
+      case 0x0115: this.uefChunks.push({op:"ignore", args:["0x0115 phase change", uefPos]});
+      break;
 
 
-        // Still to implement
-        // ------------------
-        case 0x0101:
-        this.warning = warningLog('0x0101 multiplexed data block at byte '+uefPos);
-        break;
+      // Still to implement
+      // ------------------
+      case 0x0101: this.uefChunks.push({op:"fail", args:["0x0101 multiplexed data block", uefPos]});
+      break;
 
-        case 0x0102:
-        this.warning = warningLog('0x0102 explicit tape data block at byte '+uefPos);
-        break;
+      case 0x0102: this.uefChunks.push({op:"fail", args:["0x0102 explicit tape data block", uefPos]});
+      break;
 
-        case 0x0103:
-        this.warning = warningLog('0x0103 multiplexed data block at byte '+uefPos);
-        break;
+      case 0x0103: this.uefChunks.push({op:"fail", args:["0x0103 multiplexed data block", uefPos]});
+      break;
 
-        case 0x0104:
-        this.warning = warningLog('0x0104 defined tape format data block at byte '+uefPos);
-        break;
+      case 0x0104: this.uefChunks.push({op:"fail", args:["0x0104 defined tape format data block", uefPos]});
+      break;
 
-        case 0x0114:
-        this.warning = warningLog('0x0114 security cycles at byte '+uefPos);
-        break;
+      case 0x0114: this.uefChunks.push({op:"fail", args:["0x0114 security cycles", uefPos]});
+      break;
 
-        case 0x0117:
-        this.warning = warningLog('0x0117 data encoding format change at byte '+uefPos);
-        break;
+      case 0x0117: this.uefChunks.push({op:"fail", args:["0x0117 data encoding format change", uefPos]});
+      break;
 
-        case 0x0120:
-        this.warning = warningLog('0x0120 position marker at byte '+uefPos);
-        break;
+      case 0x0120: this.uefChunks.push({op:"fail", args:["0x0120 position marker", uefPos]});
+      break;
 
-        case 0x0130:
-        this.warning = warningLog('0x0130 tape set info at byte '+uefPos);
-        break;
+      case 0x0130: this.uefChunks.push({op:"fail", args:["0x0130 tape set info", uefPos]});
+      break;
 
-        case 0x0131:
-        this.warning = warningLog('0x0131 start of tape side at byte '+uefPos);
-        break;
+      case 0x0131: this.uefChunks.push({op:"fail", args:["0x0131 start of tape side", uefPos]});
+      break;
 
-        default:
-        this.warning = warningLog("0x"+hex(chunkID).substring(4,8)+" at byte "+uefPos);
-      }
+      default: this.uefChunks.push({op:"fail", args:["0x"+hex(chunkID).substring(4,8), uefPos]});
+    }
   }
   console.log(this.uefChunks.length+" UEF chunks read");
-  return sampleLength;
+  this.sampleLength = sampleLength;
 };
 
 
 // Convert UEF tokens to audio sample
-uef2wave.prototype.convert = function() {
+uef2wave.prototype.createWAV = function() {
   // Scan UEF data array for ChunkIDs and parse, writing audio to buffer
-  console.time('UEF to audio conversion');
-  var sampleLength = this.decode(); // Calculates this.uefChunks as side effect
+  var sampleLength = this.sampleLength;
   var numChunks  = this.uefChunks.length;
   var sampleRate = this.sampleRate;
   var baud = this.baud;
@@ -282,12 +252,23 @@ uef2wave.prototype.convert = function() {
     samplePos+= samplesPerBit * cycles;
   };
 
+  fail = function(warning, byte){
+    console.log("FAILED "+warning+" at "+byte);
+    this.fails += 1;
+  }
+
+  ignore = function(warning, byte){
+    //console.log("IGNORED! "+warning+" at "+byte);
+  }
+
   // Define functions to apply to uefChunk tokens
   var functions = {
-    integerGap: writeGap,
-    carrierTone: carrierTone,
-    writeByte: writeByte,
-    writeData: writeData}
+    integerGap:   writeGap,
+    carrierTone:  carrierTone,
+    writeByte:    writeByte,
+    writeData:    writeData,
+    fail:         fail,
+    ignore:       ignore}
 
     // Parse all UEF chunk tokens
     for (var i = 0; i < numChunks; i++) {
@@ -297,7 +278,6 @@ uef2wave.prototype.convert = function() {
     }
 
     console.log(Math.floor(samplePos/sampleRate)+"s WAV audio at "+baud+" baud");
-    console.timeEnd('UEF to audio conversion');
     return new Uint8Array(this.BuildWaveHeader(waveBuffer, samplePos));
   };
 
@@ -334,3 +314,13 @@ uef2wave.prototype.convert = function() {
 
     return waveBuffer;
   }
+
+  uef2wave.prototype.convert = function() {
+    console.time('Decode UEF');
+    this.decodeUEF();
+    console.timeEnd('Decode UEF');
+    console.time('Create WAV');
+    var wavfile = this.createWAV();
+    console.timeEnd('Create WAV');
+    return wavfile;
+  };
