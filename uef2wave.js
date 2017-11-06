@@ -135,6 +135,22 @@ uef2wave.prototype.decodeUEF = function() {
       firstBlock = true;
       break;
 
+      case 0x0104: // 0x0104 defined tape format data block
+      var data = new Uint8Array(this.uefData.slice(chunkStart+3, nextChunk));
+      var bitsPerPacket = this.uefData[chunkStart]; // number of data bits per packet, not counting start/stop/parity bits.
+      var parity = String.fromCharCode(this.uefData[chunkStart+1]); // 'N', 'E' or 'O', which specifies that parity is not present, even or odd.
+      var stopBits = this.uefData[chunkStart+2]; // positive = count of stop bits. negative = stop bits to which an extra short wave should be added.
+      if (stopBits<0) {stopBits = Math.abs(stopBits); var extraWave = true;} else {var extraWave=false;};
+
+      this.uefChunks.push(
+        {op:"writeFormData",
+        args:[chunkStart+3,nextChunk,
+          {bitsPerPacket: bitsPerPacket,
+           parity:        parity,
+           stopBits:      stopBits,
+           extraWave:     extraWave}],
+        data:data, header:header});
+      break;
 
       // Ignored
       // --------
@@ -155,9 +171,6 @@ uef2wave.prototype.decodeUEF = function() {
       break;
 
       case 0x0103: this.uefChunks.push({op:"fail", args:["0x0103 multiplexed data block", uefPos]});
-      break;
-
-      case 0x0104: this.uefChunks.push({op:"fail", args:["0x0104 defined tape format data block", uefPos]});
       break;
 
       case 0x0114: this.uefChunks.push({op:"fail", args:["0x0114 security cycles", uefPos]});
@@ -212,39 +225,71 @@ uef2wave.prototype.createWAV = function() {
   var bit0    = generateTone(baud,1,phase, sampleRate);
   var bit1    = generateTone(baud*2,2,phase, sampleRate);
   var stopbit = generateTone(baud*2,stopCycles/2,phase, sampleRate);
+  var highwave= generateTone(baud*2,1,phase, sampleRate);
 
   var samplesPerBit = bit0.length;
 
-  // Write array to sample buffer
-  writeBit = function(bitArray) {
-    var length = bitArray.length;
+  // Write array to audio buffer
+  writeSample = function(array) {
+    var length = array.length;
     for (var i = 0 ; i < length; i++) {
-      sampleData[samplePos+i] = bitArray[i];
+      sampleData[samplePos+i] = array[i];
     } samplePos+=length;
   };
 
-  // Write individual data byte to audio sample
-  writeByte = function(byte) {
-    writeBit(bit0); // Start bit 0
-    for (var b = 0; b < 8; b++) {
-      bit = byte & 1;
-      if (bit==1) {writeBit(bit1);} else {writeBit(bit0);}
-      byte = byte >>1;
-    }
-    writeBit(stopbit); // Stop bit 1
+  // Write bit to audio buffer
+  writeBit = function (bit) {
+    (bit==0) ? writeSample(bit0) : writeSample(bit1);
   };
 
-  // Convert data range in UEF buffer to audio sample
+  // Write byte to audio buffer in standard 8N1 format
+  writeByte = function(byte) {
+    writeSample(bit0); // Start bit 0
+    for (var b = 0; b < 8; b++) {
+      bit = byte & 1;
+      writeBit(bit);
+      byte = byte >>1;
+    }
+    writeSample(stopbit); // Stop bit 1
+  };
+
+  // Write data range in UEF file to audio buffer
   writeData = function(start, end) {
     for (var i = start; i < end; i++) {
       writeByte(this.uefData[i]);
     }
   };
 
+  // Write formatted data byte to audio buffer
+  writeFormByte = function(byte, format) {
+    var parity = 0;
+    writeSample(bit0); // Start bit 0
+    for (var b = 0; b < format.bitsPerPacket; b++) { // Data packet
+      bit = byte & 1;
+      parity += bit;
+      writeBit(bit);
+      byte = byte >>1;
+    }
+    parity = parity && 1; // Parity bit
+    if (format.parity=="E") {parity ^= 1};
+    if (format.parity!="N") {writeBit(parity)};
+    for (var i = 0; i < format.stopBits; i++) {
+    writeSample(stopbit); // Stop bit(s) 1
+  }
+  if (format.extraWave=true) {writeSample(highwave)};
+  };
+
+  // Write data range in UEF to audio buffer
+  writeFormData = function(start, end, format) {
+    for (var i = start; i < end; i++) {
+      writeFormByte(this.uefData[i], format);
+    }
+  };
+
   // Write carrier tone using cycles/2 '1' bits
   carrierTone = function(cycles) {
     var cycles = cycles >> 1; // divide by two as a bit1 contains two cycles
-    for (var i = 0; i < (cycles); i++) {writeBit(bit1);}
+    for (var i = 0; i < (cycles); i++) {writeSample(bit1);}
   };
 
   // Gap advances sample position pointer, assumes array is zero filled
@@ -263,12 +308,13 @@ uef2wave.prototype.createWAV = function() {
 
   // Define functions to apply to uefChunk tokens
   var functions = {
-    integerGap:   writeGap,
-    carrierTone:  carrierTone,
-    writeByte:    writeByte,
-    writeData:    writeData,
-    fail:         fail,
-    ignore:       ignore}
+    integerGap:         writeGap,
+    carrierTone:        carrierTone,
+    writeByte:          writeByte,
+    writeData:          writeData,
+    writeFormData:      writeFormData,
+    fail:               fail,
+    ignore:             ignore}
 
     // Parse all UEF chunk tokens
     for (var i = 0; i < numChunks; i++) {
