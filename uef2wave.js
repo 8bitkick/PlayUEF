@@ -278,8 +278,8 @@ uef2wave.prototype.createWAV = function() {
       writeBit(bit);
       byte = byte >>1;
     }
-    parity = parity && 1; // Parity bit
-    if (format.parity=="E") {parity ^= 1};
+    parity = parity & 1; // Parity bit
+    if (format.parity=="O") {parity ^= 1};
     if (format.parity!="N") {writeBit(parity)};
     for (var i = 0; i < format.stopBits; i++) {
       writeSample(bit1); // Stop bit(s) 1
