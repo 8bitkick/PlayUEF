@@ -147,6 +147,9 @@ uef2wave.prototype.decodeUEF = function() {
       firstBlock = true;
       break;
 
+
+      // Approximated
+
       case 0x0116: // 0x0116 floating point gap
       var floatGap = floatAt(this.uefData,chunkStart);
       var cycles = Math.ceil(floatGap * this.baud); // We're cheating and converting to an integerGap
@@ -154,7 +157,12 @@ uef2wave.prototype.decodeUEF = function() {
       firstBlock = true;
       break;
 
+      case 0x0114: // 0x0114 security cycles
+      var cycles = doubleAt(this.uefData,chunkStart) & 0x00ffffff;
+      this.uefChunks.push({op:"carrierTone", cycles:cycles});
+      break;
 
+/*
       // Ignored
       // --------
       // Capturing mechanical variance in cassette deck can usually be ignored?
@@ -176,9 +184,6 @@ uef2wave.prototype.decodeUEF = function() {
       case 0x0103: this.uefChunks.push({op:"fail", args:["0x0103 multiplexed data block", uefPos]});
       break;
 
-      case 0x0114: this.uefChunks.push({op:"fail", args:["0x0114 security cycles", uefPos]});
-      break;
-
       case 0x0117: this.uefChunks.push({op:"fail", args:["0x0117 data encoding format change", uefPos]});
       break;
 
@@ -189,9 +194,10 @@ uef2wave.prototype.decodeUEF = function() {
       break;
 
       case 0x0131: this.uefChunks.push({op:"fail", args:["0x0131 start of tape side", uefPos]});
-      break;
+      break;*/
 
-      default: this.uefChunks.push({op:"fail", args:["0x"+hex(chunkID).substring(4,8), uefPos]});
+      default: console.log("WARNING ignored chunk "+"0x"+hex(chunkID).substring(4,8)+" at "+uefPos);
+
     }
   }
   console.log(this.uefChunks.length+" UEF chunks read");
@@ -279,8 +285,8 @@ uef2wave.prototype.createWAV = function() {
       byte = byte >>1;
     }
     parity = parity & 1; // Parity bit
-    if (format.parity=="O") {parity ^= 1};
-    if (format.parity!="N") {writeBit(parity)};
+    if (format.parity=="E") {parity ^= 1};
+    if (format.parity!="N") {writeBit(parity);};
     for (var i = 0; i < format.stopBits; i++) {
       writeSample(bit1); // Stop bit(s) 1
     }

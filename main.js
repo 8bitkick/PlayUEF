@@ -195,7 +195,7 @@ PlayUEF = function() {
 
             // If playing
             if (currentTime!=0){
-              
+
               // convert audio time to sample position and get associated UEF chunk
               var samplepos = currentTime * SAMPLE_RATE;
               thischunk = binarySearch(chunks,samplepos);
@@ -204,11 +204,21 @@ PlayUEF = function() {
               switch (chunks[thischunk].op){
 
                 case "writeData":
+                document.getElementById("console").style.color = "#00aa00";
                 var delta = Math.floor((samplepos-chunks[thischunk].pos)*(BAUD/SAMPLE_RATE)/10);
                 var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(0,delta));
                 document.getElementById("console").innerHTML  = str+"|";
                 document.getElementById("header").innerHTML = chunks[thischunk].header;
-                document.getElementById("console").style.color = "#00aa00";
+
+                break;
+
+                case "writeFormData":
+                  document.getElementById("console").style.color = "#0aaaa00";
+                var delta = Math.floor((samplepos-chunks[thischunk].pos)*(BAUD/SAMPLE_RATE)/10);
+                var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(0,delta));
+                document.getElementById("console").innerHTML  = str+"|";
+                document.getElementById("header").innerHTML = "Defined format data";
+
                 break;
 
                 // Clear console for integerGap
