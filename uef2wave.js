@@ -112,7 +112,7 @@ uef2wave.prototype.decodeUEF = function() {
             bitsPerPacket: this.uefData[chunkStart],
             parity:        String.fromCharCode(this.uefData[chunkStart+1]),   // 'N', 'E' or 'O' = present, even or odd.
             stopBits:      Math.abs(this.uefData[chunkStart+2]),              // count of stop bits.
-            extraWave:     ((Math.abs(this.uefData[chunkStart+2])<0) ? 1 : 0) // negative stopBits = extra wave should be added.
+            extraWave:     (this.uefData[chunkStart+2]<0 ? 1 : 0) // negative stopBits = extra wave should be added.
           },
           get cycles() {
             cyclesPerPacket = 1 + this.format.bitsPerPacket + ((this.format.parity!="N") ? 1 : 0) + this.format.stopBits + this.format.extraWave/2;
