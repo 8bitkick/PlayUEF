@@ -213,7 +213,7 @@ PlayUEF = function() {
                 break;
 
                 case "writeFormData":
-                  document.getElementById("console").style.color = "#0aaaa00";
+                  document.getElementById("console").style.color = "#aaaa00";
                 var delta = Math.floor((samplepos-chunks[thischunk].pos)*(BAUD/SAMPLE_RATE)/10);
                 var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(0,delta));
                 document.getElementById("console").innerHTML  = str+"|";
