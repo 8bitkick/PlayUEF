@@ -180,9 +180,8 @@ uef2wave.prototype.decodeUEF = function() {
 
       case 0x0114: // 0x0114 security cycles
       var cycles = doubleAt(this.uefData,chunkStart) & 0x00ffffff;
-      this.uefChunks.push({op:"carrierTone", cycles:cycles*2});
+      this.uefChunks.push({op:"carrierTone", cycles:cycles*2}); // We're cheating using carrierTone
       var data = new Uint8Array(this.uefData.slice(chunkStart, nextChunk));
-      console.log(data);
       break;
 
       /*
@@ -224,24 +223,9 @@ uef2wave.prototype.decodeUEF = function() {
     }
   }
   console.log(this.uefChunks.length+" UEF chunks read");
-
-console.log("**** NASTY TEST FOR FORTRESS IN PLACE - DELETE ***");
-
   sampleLength = 0;
   for (var i = 0; i < this.uefChunks.length; i++) {
     sampleLength += this.uefChunks[i].cycles * samplesPerCycle || 0;
-
-    /* DELETE
-    if (i==196) {
-      this.uefChunks[i].op = "writeFormData";
-    this.uefChunks[i].format=
-    {parity:"N",
-    stopBits:2,
-    bitsPerPacket:8,
-    extraWave:0}
-  }*/
-
-//console.log(this.uefChunks[i],i);
   }
   this.sampleLength = sampleLength;
 };
