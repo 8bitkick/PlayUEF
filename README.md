@@ -19,6 +19,22 @@ Set up a local web server as below and navigate to http://localhost:8000/PlayUEF
 
 For testing purposes http://localhost:8000/test.html fetches links to the STH UEF archive.
 
+Local UEF conversion & WAV download
+-----------------------------------
+Press play on the media player in the web page to play the cassette audio from the browser.
+
+Clicking the cassette player causes PlayUEF to download the converted audio as a WAV.
+
+Adding the `LOCAL=true` parameter to the URL causes PlayUEF to request user to select a file to convert on their local machine.
+
+Browser compatibility
+---------------------
+
+Tested on Chrome, Safari, Firefox and Microsoft Edge browser
+
+Known issues on some versions of IE and Android browsers (e.g. UC browser), to be fixed...
+
+
 URL parameters
 --------------
 
@@ -31,28 +47,20 @@ URL parameters
 * `BAUD=<int>` Change base frequency. Defaults to Acorn standard 1200 Hz.
   * e.g. `BAUD=1400` works comfortably on my Acorn Electron and BBC Micro issue 7
 
-
 * `PHASE=<int>` Change sine phase. Defaults to Acorn standard 180 degrees.
 
-* `CARRIER=<int>` Carrier tone length factor
-  * `CARRIER=0` Minimal inter-block carrier tones for faster loading
-  * `CARRIER=1` Default
-  * `CARRIER=2` BBC Micro Issue 3 compatibility.
+* `CARRIER=<int>` Carrier tone length factor * 2
+  * `CARRIER=0` Minimal inter-block carrier tones, works on Acorn Electron
+  * `CARRIER=1` Works on BBC Micro issue 7
+  * `CARRIER=2` Default
 
-
-* `STOPBIT=<int>` Faster loading. Equal to number of cycles per stop bit / 2
-  * `STOPBIT=1` Tested on Acorn Electron
-  * `STOPBIT=3` Tested on BBC Micro Issue 7
-  * `STOPBIT=4` Default (2 cycles of high tone)
+* `STOPBIT=<int>` Equal to number of cycles per stop bit * 2. Effects 0x0100 chunks only.
+  * `STOPBIT=1` Works on Acorn Electron Issue 2 & 4
+  * `STOPBIT=3` Works on BBC Micro Issue 7
+  * `STOPBIT=4` Works on BBC Micro Issue 3. (Default)
 
 
 * `TURBO=1` Equivalent to CARRIER=0&STOPBIT=1
-
-Local UEF conversion & WAV download
------------------------------------
-Simply clicking the cassette player causes PlayUEF to download the converted audio as a WAV.
-
-Adding the `LOCAL=true` parameter to the URL causes PlayUEF to request user to select a file to convert on their local machine.
 
 
 Faster Loading
@@ -75,10 +83,12 @@ Fully implemented UEF chunks
 * `0x0110` Carrier tone
 * `0x1111` Carrier tone with dummy byte at byte
 * `0x0112` Integer gap
+* `0x0104` defined data block (for Acorn Atom and BBC titles like AndroidAttack & Joust)
 
 Approximated
 
-* `0x0116` - floating point gap is approximated to nearest 2 cycles
+* `0x0116` - floating point gap is approximated to interger gap
+* `0x0114` - security cycles replaced with carrier tone
 
 Ignored
 * `0x0113` Change of base frequency
@@ -87,10 +97,9 @@ Ignored
 These seem to usually reflect mechanical variance of original cassette player behavior. As we just want to load game data rather than recreate archival quality audio, these are ignored.
 
 To-do list
-* `0x0104` defined data block (for Acorn Atom and BBC titles like AndroidAttack & Joust)
-* `0x0114` security cycles
+* Test on Acorn Atom
 
 
 Thanks
 ------
-Thanks to Thomas Harte for the original UEF spec and Wouter Hobers for the python uef2wave which this project is a continuation of, BigEd, Commie_User, DavidB, Vanekp of the [stardot forum](http://stardot.org.uk) for suggestions and Matt Godbolt for setting the standard with the awesome [JSbeeb](https://github.com/mattgodbolt/jsbeeb). Not forgetting Arcadian and the archive of over 1000 games at the [STH archive](http://www.stairwaytohell.com/electron/uefarchive/) which make this project come to life.
+Thanks to Thomas Harte for the UEF spec and Wouter Hobers for uef2wave.py, BigEd, Commie_User, DavidB, Vanekp of the [stardot forum](http://stardot.org.uk) for suggestions and Matt Godbolt for the awesome [JSbeeb](https://github.com/mattgodbolt/jsbeeb). Not forgetting Arcadian and the archive of over 1000 games at the [STH archive](http://www.stairwaytohell.com/electron/uefarchive/) which make this project come to life.
