@@ -160,7 +160,9 @@ function Cassette(length, position, title, baud, version) {
     ctx.fillText(baud,347,110);
     ctx.fillText("baud",347,124);
 
-    ctx.fillText("version",400-347,110);
+
+    ctx.fillText("PlayUEF",400-347,110);
+    ctx.fillStyle = '#0ba5e8';
     ctx.font="9px Arial";
     ctx.fillText(version,400-347,124);
 
