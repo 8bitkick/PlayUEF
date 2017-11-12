@@ -48,7 +48,7 @@ uef2wave.prototype.decodeUEF = function() {
   var carrier        = this.carrier / 2; // 1 = half.
   var stopPulses     = this.stopPulses;
   var chunkNum       = 0;
-  var parityInvert   = false; // If source is MakeUEF v2.3 or below, data parity bit of 0x0104 chunks is inverted
+  var parityInvert   = false;
 
   wordAt = function(array,position){
     var bytes = array.slice(position, position+2);
@@ -88,15 +88,13 @@ uef2wave.prototype.decodeUEF = function() {
     var chunkStart  = uefPos + 6;
     var nextChunk   = chunkStart + chunkLength;
 
-
-
     switch (chunkID){
 
       case 0x0000: // 0x0000 origin information chunk
       var info = String.fromCharCode.apply(null,(this.uefData.slice(chunkStart, nextChunk)));
       console.log("UEF info: "+info);
 
-      // If MakeUEF is v2.3 or below, parity bit of 0x0104 chunks is inverted
+      // If MakeUEF is v2.x or below, parity bit of 0x0104 chunks is inverted
       var search = info.match(/MakeUEF\D+(\d+)\.(\d+)/i);
       if (search) {
         var version = search[1];
@@ -134,7 +132,7 @@ uef2wave.prototype.decodeUEF = function() {
         }
       );
 
-      // If source is MakeUEF v2.3 or below, parity of 0x0104 chunks is inverted
+      // Check if parity of 0x0104 chunks need to be inverted
       if (parityInvert==true){
         temp = this.uefChunks[this.uefChunks.length-1].format.parity;
         if (temp=="E") {this.uefChunks[this.uefChunks.length-1].format.parity="O"}
@@ -182,7 +180,9 @@ uef2wave.prototype.decodeUEF = function() {
 
       case 0x0114: // 0x0114 security cycles
       var cycles = doubleAt(this.uefData,chunkStart) & 0x00ffffff;
-      this.uefChunks.push({op:"carrierTone", cycles:cycles});
+      this.uefChunks.push({op:"carrierTone", cycles:cycles*2});
+      var data = new Uint8Array(this.uefData.slice(chunkStart, nextChunk));
+      console.log(data);
       break;
 
       /*
@@ -225,9 +225,23 @@ uef2wave.prototype.decodeUEF = function() {
   }
   console.log(this.uefChunks.length+" UEF chunks read");
 
+console.log("**** NASTY TEST FOR FORTRESS IN PLACE - DELETE ***");
+
   sampleLength = 0;
   for (var i = 0; i < this.uefChunks.length; i++) {
     sampleLength += this.uefChunks[i].cycles * samplesPerCycle || 0;
+
+    /* DELETE
+    if (i==196) {
+      this.uefChunks[i].op = "writeFormData";
+    this.uefChunks[i].format=
+    {parity:"N",
+    stopBits:2,
+    bitsPerPacket:8,
+    extraWave:0}
+  }*/
+
+//console.log(this.uefChunks[i],i);
   }
   this.sampleLength = sampleLength;
 };
