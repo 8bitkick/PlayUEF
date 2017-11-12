@@ -47,6 +47,8 @@ uef2wave.prototype.decodeUEF = function() {
   var firstBlock     = true; // track to reduce firstBlock carrier tones if carrier=0
   var carrier        = this.carrier / 2; // 1 = half.
   var stopPulses     = this.stopPulses;
+  var chunkNum       = 0;
+  var parityInvert   = false; // If source is MakeUEF v2.3 or below, data parity bit of 0x0104 chunks is inverted
 
   wordAt = function(array,position){
     var bytes = array.slice(position, position+2);
@@ -86,11 +88,22 @@ uef2wave.prototype.decodeUEF = function() {
     var chunkStart  = uefPos + 6;
     var nextChunk   = chunkStart + chunkLength;
 
+
+
     switch (chunkID){
 
       case 0x0000: // 0x0000 origin information chunk
       var info = String.fromCharCode.apply(null,(this.uefData.slice(chunkStart, nextChunk)));
       console.log("UEF info: "+info);
+
+      // If MakeUEF is v2.3 or below, parity bit of 0x0104 chunks is inverted
+      var search = info.match(/MakeUEF\D+(\d+)\.(\d+)/i);
+      if (search) {
+        var version = search[1];
+        if (version < 3) {parityInvert = true;}
+        console.log("PlayUEF : MakeUEF v2.x or below - 0x0104 parity will be inverted");
+      }
+
       break;
 
       case 0x0100: // 0x0100 implicit start/stop bit tape data block
@@ -120,6 +133,16 @@ uef2wave.prototype.decodeUEF = function() {
           }
         }
       );
+
+      // If source is MakeUEF v2.3 or below, parity of 0x0104 chunks is inverted
+      if (parityInvert==true){
+        temp = this.uefChunks[this.uefChunks.length-1].format.parity;
+        if (temp=="E") {this.uefChunks[this.uefChunks.length-1].format.parity="O"}
+        if (temp=="O") {this.uefChunks[this.uefChunks.length-1].format.parity="E"}
+      }
+
+      chunk=this.uefChunks[this.uefChunks.length-1].format;
+      console.log("0x0104 - "+chunk.bitsPerPacket+""+chunk.parity+""+chunk.stopBits+" of "+(chunkLength-3)+" bytes");
       firstBlock = false;
       break;
 
@@ -162,7 +185,7 @@ uef2wave.prototype.decodeUEF = function() {
       this.uefChunks.push({op:"carrierTone", cycles:cycles});
       break;
 
-/*
+      /*
       // Ignored
       // --------
       // Capturing mechanical variance in cassette deck can usually be ignored?
@@ -196,7 +219,7 @@ uef2wave.prototype.decodeUEF = function() {
       case 0x0131: this.uefChunks.push({op:"fail", args:["0x0131 start of tape side", uefPos]});
       break;*/
 
-      default: console.log("WARNING ignored chunk "+"0x"+hex(chunkID).substring(4,8)+" at "+uefPos);
+      //default: console.log("WARNING ignored chunk "+"0x"+hex(chunkID).substring(4,8)+" at "+uefPos);
 
     }
   }
@@ -285,7 +308,7 @@ uef2wave.prototype.createWAV = function() {
       byte = byte >>1;
     }
     parity = parity & 1; // Parity bit
-    if (format.parity=="E") {parity ^= 1};
+    if (format.parity=="O") {parity ^= 1};
     if (format.parity!="N") {writeBit(parity);};
     for (var i = 0; i < format.stopBits; i++) {
       writeSample(bit1); // Stop bit(s) 1
