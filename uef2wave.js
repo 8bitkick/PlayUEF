@@ -11,7 +11,7 @@
 // http://electrem.emuunlim.com/UEFSpecs.htm
 //
 
-function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrier){
+function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
   "use strict";
 
   var isValidUEF = function() {return ((String.fromCharCode.apply(null,uefData.slice(0, 9)) == "UEF File!"));}
@@ -29,10 +29,9 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrier){
   var samplesPerCycle= Math.floor(sampleRate / baud); // Audio samples per base cycle
   var uefPos         = 12; // skip over "UEF File!"
   var uefDataLength  = uefData.length;
-  var carrier        = carrier / 2; // 1 = half.
-  var firstBlock     = true; // track to reduce firstBlock carrier tones if carrier=0
+  var carrierFactor  = carrierFactor / 2; // 1 = half.
   var parityInvert   = false; // Set if MakeUEF 2.x was used in creation of UEF
-  var uefCycles  = 0;
+  var uefCycles      = 0;
 
   function decodeUEF(uefData){
 
@@ -99,7 +98,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrier){
     function carrierTone(UEFchunk){
       return {
         type:   "carrierTone",
-        cycles: wordAt(UEFchunk.data,0)*carrier
+        cycles: wordAt(UEFchunk.data,0)
       };
     }
 
@@ -107,7 +106,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrier){
     function securityCycles(UEFchunk){
       return {
         type:   "carrierTone",
-        cycles: (doubleAt(UEFchunk.data,0) & 0x00ffffff)*carrier
+        cycles: (doubleAt(UEFchunk.data,0) & 0x00ffffff)
       };
     }
 
@@ -117,7 +116,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrier){
       return [
         {
           type:   "carrierTone",
-          cycles: wordAt(UEFchunk.data,0)*carrier
+          cycles: wordAt(UEFchunk.data,0) // before byte
         },
         {
           type:   "dataBlock",
@@ -125,7 +124,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrier){
         },
         {
           type:   "carrierTone",
-          cycles: wordAt(UEFchunk.data,2)*carrier // after byte
+          cycles: wordAt(UEFchunk.data,2) // after byte
         }
       ]
     }
@@ -171,16 +170,35 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrier){
       return UEFchunk;
     }
 
-    // Decode all chunks
+    // Decode all UEF chunks
     while (uefPos < uefDataLength) {
-      var UEFchunk = readChunk(uefData, uefPos);
-      var currentChunk = decodeChunk(UEFchunk);
-      // Calculate length of data blocks
+      var UEFchunk        = readChunk(uefData, uefPos);
+      var currentChunk    = decodeChunk(UEFchunk);
+      var firstBlock      = true; // track to reduce firstBlock carrier tones if carrier=0
+
       if (currentChunk != null) {
-        currentChunk.cycles = (currentChunk.cycles != null) ? currentChunk.cycles : cyclesPerPacket(currentChunk.format)*currentChunk.data.length;
-        uefChunks.push(currentChunk);
+        // Pre-processing for CARRIER factor parameter
+        switch (currentChunk.type) {
+          case "dataBlock":
+          case "definedDataBlock":
+          currentChunk.cycles = (currentChunk.cycles != null) ? currentChunk.cycles : cyclesPerPacket(currentChunk.format)*currentChunk.data.length;
+          firstBlock = false;
+          break;
+
+          case "carrierTone":
+          currentChunk.cycles = (carrierFactor==0 && firstBlock==false) ? 60 : currentChunk.cycles * carrierFactor;
+          break;
+
+          case "integerGap":
+          firstBlock = true;
+          break;
+        }
+
         uefCycles+= currentChunk.cycles;
+        uefChunks.push(currentChunk);
       }
+      // Move pointer to next chunk
+
       uefPos += UEFchunk.data.length + 6;
     }
     return uefChunks;
@@ -278,12 +296,12 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrier){
     }
 
     var numChunks     = uefChunks.length;
-    var estLength     = uefCycles* samplesPerCycle; // Estimate WAV length from UEF decode
+    var estLength     = uefCycles * samplesPerCycle; // Estimate WAV length from UEF decode
     var waveBuffer    = new ArrayBuffer(44 + (estLength*2)); // Header is 44 bytes, sample is 16-bit * sampleLength
-    var sampleData    = new Int16Array(waveBuffer, 44,estLength);
+    var sampleData    = new Int16Array(waveBuffer, 44, estLength);
     var samplePos     = 0;
 
-    // Parse all UEF chunk objects
+    // Parse all chunk objects and write WAV
     for (var i = 0; i < numChunks; i++) {
       var chunk = uefChunks[i];
       uefChunks[i].timestamp = samplePos; // Record chunk position in audio WAV, given in samples

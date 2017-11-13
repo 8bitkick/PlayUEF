@@ -213,6 +213,13 @@ PlayUEF = function() {
                 document.getElementById("header").innerHTML = chunks[thischunk].header;
                 break;
 
+                case "definedDataBlock":
+                document.getElementById("console").style.color = "#00aaaa";
+                var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
+                var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(0,delta));
+                document.getElementById("console").innerHTML  = str+"|";
+                break;
+
                 // Clear console for integerGap
                 case "integerGap":
                 document.getElementById("console").innerHTML ="";
