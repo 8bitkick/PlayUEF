@@ -172,9 +172,9 @@ PlayUEF = function() {
           while (lo <= hi) {
             mid = ((lo + hi) >> 1);
             element = array[mid];
-            if ((element.pos+(element.cycles*samplesPerCycle)) < key) {
+            if ((element.timestamp+(element.cycles*samplesPerCycle)) < key) {
               lo = mid + 1;
-            } else if (element.pos > key) {
+            } else if (element.timestamp > key) {
               hi = mid - 1;
             } else {
               return mid;
@@ -190,6 +190,7 @@ PlayUEF = function() {
             // Get position of audio player
             var duration = player.duration;
             var currentTime = player.currentTime;
+            var bytesPerSample = (BAUD/SAMPLE_RATE)/10; // # tape bytes transmitted per WAV sample, assuming 10 bit packets
             // Render cassette frame
             Cassette(duration,currentTime,UEFNAME,BAUD,VERSION);
 
@@ -206,7 +207,7 @@ PlayUEF = function() {
               switch (chunks[thischunk].type){
                 case "dataBlock":
                 document.getElementById("console").style.color = "#00aa00";
-                var delta = Math.floor((samplepos-chunks[thischunk].pos)*(BAUD/SAMPLE_RATE)/10);
+                var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
                 var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(0,delta));
                 document.getElementById("console").innerHTML  = str+"|";
                 document.getElementById("header").innerHTML = chunks[thischunk].header;
