@@ -107,7 +107,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrier){
           stopBits: UEFchunk.data[2]
         },
         header: "",
-        data:   UEFchunk.data
+        data:   UEFchunk.data.slice(3)
       };
     }
 
