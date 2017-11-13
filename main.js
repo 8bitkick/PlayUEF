@@ -7,7 +7,7 @@
 // Loads cassette-based games to Acorn Electron and BBC micro
 //
 
-var VERSION = "1.0 beta 2";
+var VERSION = "1.0 beta 3";
 
 updateStatus = function(status) { document.getElementById("status").innerHTML = status; };
 handleError = function(error) { document.getElementById("spinner").style.borderLeft = "1.1em solid #FF0000";updateStatus(error);throw new Error();};
@@ -110,9 +110,12 @@ PlayUEF = function() {
     function convertUEF(UEFfiledata) {
       document.getElementById("status").innerHTML = "CONVERTING";
       //try {
+
       // Do the actual conversion
-      var UEFobject = new uef2wave(UEFfiledata, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER);
-      var wavfile = UEFobject.convert();
+      var result  = uef2wave(UEFfiledata, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER);
+
+      var wavfile   = result.wav;
+      var UEFobject = result.uef;
 
       var wavname = UEFNAME.split('.').shift().toLowerCase();
       if (BAUD!=1200) {wavname+=BAUD};
@@ -142,10 +145,9 @@ PlayUEF = function() {
 
     // Initialize animation
     // --------------------
-    function animationInit(UEFobject) {
-      var chunks = UEFobject.uefChunks;
+    function animationInit(chunks) {
       var warning = "";
-      if (UEFobject.fails != 0) {warning = "WARNING: "+UEFobject.fails+" unsupported UEF chunks! See JS console<br>";};
+      //if (UEFobject.fails != 0) {warning = "WARNING: "+UEFobject.fails+" unsupported UEF chunks! See JS console<br>";};
       var player = document.getElementById('audio');
       var fps = 30; // polling audio player status at 30fps... better to catch event
       var thischunk = 0;
@@ -201,24 +203,13 @@ PlayUEF = function() {
               thischunk = binarySearch(chunks,samplepos);
 
               // For UEF data chunks display contents in the console in 'real time'
-              switch (chunks[thischunk].op){
-
-                case "writeData":
+              switch (chunks[thischunk].type){
+                case "dataBlock":
                 document.getElementById("console").style.color = "#00aa00";
                 var delta = Math.floor((samplepos-chunks[thischunk].pos)*(BAUD/SAMPLE_RATE)/10);
                 var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(0,delta));
                 document.getElementById("console").innerHTML  = str+"|";
                 document.getElementById("header").innerHTML = chunks[thischunk].header;
-
-                break;
-
-                case "writeFormData":
-                document.getElementById("console").style.color = "#00aaaa";
-                var delta = Math.floor((samplepos-chunks[thischunk].pos)*(BAUD/SAMPLE_RATE)/10);
-                var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(0,delta));
-                document.getElementById("console").innerHTML  = str+"|";
-                document.getElementById("header").innerHTML = "Defined format data";
-
                 break;
 
                 // Clear console for integerGap
