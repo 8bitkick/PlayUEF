@@ -231,7 +231,6 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
 
     for (var i = 0; i < numChunks; i++) {
       uefCycles += uefChunks[i].cycles;
-      console.log(uefCycles, uefChunks[i]);
     }
 
     var estLength     = uefCycles * samplesPerCycle; // Estimate WAV length from UEF decode
