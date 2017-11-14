@@ -209,7 +209,7 @@ PlayUEF = function() {
                 case "dataBlock":
                 document.getElementById("console").style.color = "#00aa00";
                 var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
-                var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(0,delta));
+                var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(delta & 0xfe00,delta));
                 document.getElementById("console").innerHTML  = str+"|";
                 document.getElementById("header").innerHTML = chunks[thischunk].header;
                 break;
@@ -217,7 +217,7 @@ PlayUEF = function() {
                 case "definedDataBlock":
                 document.getElementById("console").style.color = "#00aaaa";
                 var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
-                var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(0,delta));
+                var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(delta & 0xfe00,delta));
                 document.getElementById("console").innerHTML  = str+"|";
                 document.getElementById("header").innerHTML = chunks[thischunk].header;
                 break;
