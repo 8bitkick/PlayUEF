@@ -29,7 +29,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
   var samplesPerCycle= Math.floor(sampleRate / baud); // Audio samples per base cycle
   var uefPos         = 12; // skip over "UEF File!"
   var uefDataLength  = uefData.length;
-  var parityInvert   = false; // Set if MakeUEF 2.x was used in creation of UEF
+  var parityInvert   = 0;
   var uefCycles      = 0;
 
   function decodeUEF(uefData){
@@ -42,10 +42,9 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
         var match = info.match(/MakeUEF\D+(\d+)\.(\d+)/i);
         if (match) {
           var version = match[1];
-          if (version < 3) {parityInvert = true;
-                      console.log("PlayUEF : MakeUEF v2.x or below - 0x0104 parity will be inverted");
+          if (version < 3) {parityInvert = 1;
+            console.log("PlayUEF : MakeUEF v2.x or below - 0x0104 parity will be inverted");
           }
-
         }
         break;
 
@@ -58,7 +57,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
         case 0x0104: // definedDataBlock
         firstBlock = false;
         var data = UEFchunk.data.slice(3);
-        var format = {bits:UEFchunk.data[0], parity:parityAdjust(chr(UEFchunk.data[1])), stopBits:UEFchunk.data[2]};
+        var format = {bits:UEFchunk.data[0], parity:chr(UEFchunk.data[1]), stopBits:UEFchunk.data[2]};
         var cycles = cyclesPerPacket(format)*data.length;
         uefChunks.push({type:"definedDataBlock", format:format, header:"", data:data, cycles:cycles});
         break;
@@ -103,12 +102,6 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
       }
     }
 
-    // Invert parity if needed
-    function parityAdjust(parity){
-      if (parity=="N") {return "N"};
-      return ((parity=="E" && !parityInvert) || (parity=="O" && parityInvert)) ? "E" : "O";
-    }
-
     // Cassette Filing System header http://beebwiki.mdfs.net/Acorn_cassette_format
     function acornBlockInfo (data){
       if (data[0]==0x2A && data.length>24) {
@@ -134,9 +127,9 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
     }
 
     // Decode all UEF chunks
-    var firstBlock      = true;
+    var firstBlock = true;
     while (uefPos < uefDataLength) {
-      var UEFchunk        = readChunk(uefData, uefPos);
+      var UEFchunk = readChunk(uefData, uefPos);
       decodeChunk(UEFchunk);
       uefPos += UEFchunk.data.length + 6;
     }
@@ -193,6 +186,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
         paritybit ^= (paritybit >> 2);
         paritybit ^= (paritybit >> 1);
         paritybit = (format.parity == "O") ? (paritybit&1)^1 : paritybit&1;
+        paritybit ^= parityInvert;
       }
       writeSample(bit0); // Write start bit 0
       for (var b = 0; b < format.bits; b++) {
@@ -248,7 +242,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
     // Parse all chunk objects and write WAV
     for (var i = 0; i < numChunks; i++) {
       var chunk = uefChunks[i];
-      uefChunks[i].timestamp = samplePos; // Record chunk position in audio WAV, given in samples
+      uefChunks[i].timestamp = samplePos; // Record start position in audio WAV, given in samples
       functions[chunk.type].apply(this, [chunk]);
     }
 
@@ -258,7 +252,6 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
 
   console.time('Decode UEF');
   var uefChunks = decodeUEF(uefData);
-  console.log(uefChunks);
   console.timeEnd('Decode UEF');
   console.time('Create WAV');
   var wavfile = createWAV(uefChunks);
