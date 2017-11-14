@@ -7,7 +7,7 @@
 // Loads cassette-based games to Acorn Electron and BBC micro
 //
 
-var VERSION = "1.0 beta 2";
+var VERSION = "1.0 beta 3";
 
 updateStatus = function(status) { document.getElementById("status").innerHTML = status; };
 handleError = function(error) { document.getElementById("spinner").style.borderLeft = "1.1em solid #FF0000";updateStatus(error);throw new Error();};
@@ -32,10 +32,11 @@ PlayUEF = function() {
   var TURBO = getParameterByName("TURBO") || 0;
   var PHASE = getParameterByName("PHASE") || 180;
   var LOCAL = getParameterByName("LOCAL") || "false";
-  var CARRIER = getParameterByName("CARRIER") || 1; // Carrier tone length factor
-  var STOPBIT = getParameterByName("STOPBIT") || 4; // Stop bit cycles / 2
+  var CARRIER = getParameterByName("CARRIER") || 2; // Carrier tone length factor * 2
+  var STOPBIT = getParameterByName("STOPBIT") || 4; // Stop bit cycles * 2
   var PHASE = PHASE*(Math.PI/180);
 
+  CARRIER=CARRIER/2
   if (TURBO==1) {STOPBIT=1; CARRIER=0;};
 
   var SAMPLE_RATE  = 44100;
@@ -110,9 +111,12 @@ PlayUEF = function() {
     function convertUEF(UEFfiledata) {
       document.getElementById("status").innerHTML = "CONVERTING";
       //try {
+
       // Do the actual conversion
-      var UEFobject = new uef2wave(UEFfiledata, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER);
-      var wavfile = UEFobject.convert();
+      var result  = uef2wave(UEFfiledata, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER);
+
+      var wavfile   = result.wav;
+      var UEFobject = result.uef;
 
       var wavname = UEFNAME.split('.').shift().toLowerCase();
       if (BAUD!=1200) {wavname+=BAUD};
@@ -142,10 +146,9 @@ PlayUEF = function() {
 
     // Initialize animation
     // --------------------
-    function animationInit(UEFobject) {
-      var chunks = UEFobject.uefChunks;
+    function animationInit(chunks) {
       var warning = "";
-      if (UEFobject.fails != 0) {warning = "WARNING: "+UEFobject.fails+" unsupported UEF chunks! See JS console<br>";};
+      //if (UEFobject.fails != 0) {warning = "WARNING: "+UEFobject.fails+" unsupported UEF chunks! See JS console<br>";};
       var player = document.getElementById('audio');
       var fps = 30; // polling audio player status at 30fps... better to catch event
       var thischunk = 0;
@@ -170,9 +173,9 @@ PlayUEF = function() {
           while (lo <= hi) {
             mid = ((lo + hi) >> 1);
             element = array[mid];
-            if ((element.pos+(element.cycles*samplesPerCycle)) < key) {
+            if ((element.timestamp+(element.cycles*samplesPerCycle)) < key) {
               lo = mid + 1;
-            } else if (element.pos > key) {
+            } else if (element.timestamp > key) {
               hi = mid - 1;
             } else {
               return mid;
@@ -188,6 +191,7 @@ PlayUEF = function() {
             // Get position of audio player
             var duration = player.duration;
             var currentTime = player.currentTime;
+            var bytesPerSample = (BAUD/SAMPLE_RATE)/10; // # tape bytes transmitted per WAV sample, assuming 10 bit packets
             // Render cassette frame
             Cassette(duration,currentTime,UEFNAME,BAUD,VERSION);
 
@@ -201,24 +205,21 @@ PlayUEF = function() {
               thischunk = binarySearch(chunks,samplepos);
 
               // For UEF data chunks display contents in the console in 'real time'
-              switch (chunks[thischunk].op){
-
-                case "writeData":
+              switch (chunks[thischunk].type){
+                case "dataBlock":
                 document.getElementById("console").style.color = "#00aa00";
-                var delta = Math.floor((samplepos-chunks[thischunk].pos)*(BAUD/SAMPLE_RATE)/10);
-                var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(0,delta));
+                var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
+                var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(delta & 0xfe00,delta));
                 document.getElementById("console").innerHTML  = str+"|";
                 document.getElementById("header").innerHTML = chunks[thischunk].header;
-
                 break;
 
-                case "writeFormData":
+                case "definedDataBlock":
                 document.getElementById("console").style.color = "#00aaaa";
-                var delta = Math.floor((samplepos-chunks[thischunk].pos)*(BAUD/SAMPLE_RATE)/10);
-                var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(0,delta));
+                var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
+                var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(delta & 0xfe00,delta));
                 document.getElementById("console").innerHTML  = str+"|";
-                document.getElementById("header").innerHTML = "Defined format data";
-
+                document.getElementById("header").innerHTML = chunks[thischunk].header;
                 break;
 
                 // Clear console for integerGap
