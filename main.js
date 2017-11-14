@@ -32,10 +32,11 @@ PlayUEF = function() {
   var TURBO = getParameterByName("TURBO") || 0;
   var PHASE = getParameterByName("PHASE") || 180;
   var LOCAL = getParameterByName("LOCAL") || "false";
-  var CARRIER = getParameterByName("CARRIER") || 1; // Carrier tone length factor
-  var STOPBIT = getParameterByName("STOPBIT") || 4; // Stop bit cycles / 2
+  var CARRIER = getParameterByName("CARRIER") || 1; // Carrier tone length factor * 2
+  var STOPBIT = getParameterByName("STOPBIT") || 4; // Stop bit cycles * 2
   var PHASE = PHASE*(Math.PI/180);
 
+  CARRIER=CARRIER/2
   if (TURBO==1) {STOPBIT=1; CARRIER=0;};
 
   var SAMPLE_RATE  = 44100;
@@ -218,6 +219,7 @@ PlayUEF = function() {
                 var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
                 var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(0,delta));
                 document.getElementById("console").innerHTML  = str+"|";
+                document.getElementById("header").innerHTML = "Custom format data block"
                 break;
 
                 // Clear console for integerGap
