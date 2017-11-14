@@ -32,7 +32,7 @@ PlayUEF = function() {
   var TURBO = getParameterByName("TURBO") || 0;
   var PHASE = getParameterByName("PHASE") || 180;
   var LOCAL = getParameterByName("LOCAL") || "false";
-  var CARRIER = getParameterByName("CARRIER") || 1; // Carrier tone length factor * 2
+  var CARRIER = getParameterByName("CARRIER") || 2; // Carrier tone length factor * 2
   var STOPBIT = getParameterByName("STOPBIT") || 4; // Stop bit cycles * 2
   var PHASE = PHASE*(Math.PI/180);
 
