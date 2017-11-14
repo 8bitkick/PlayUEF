@@ -105,6 +105,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
 
     // Invert parity if needed
     function parityAdjust(parity){
+      if (parity=="N") {return "N"};
       return ((parity=="E" && !parityInvert) || (parity=="O" && parityInvert)) ? "E" : "O";
     }
 
@@ -146,7 +147,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
   function createWAV (uefChunks) {
     // Create 16-bit array of a sine wave for given frequency, cycles and phase
     function generateTone (frequency, cycles, phase, sampleRate) {
-      var samples = Math.floor((sampleRate / frequency)*cycles); // round down = just under full cycle
+      var samples = Math.floor((sampleRate / frequency)*cycles);
       var array = new Int16Array(samples);
       for (var i = 0 ; i < samples ; i++) {
         array[i] = Math.floor(Math.sin(phase+((i / sampleRate) * (frequency * 2 * Math.PI))) * 0x7fff);
@@ -157,7 +158,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
     // Create mini-samples of audio bit encoding
     var bit0    = generateTone(baud,1,phase, sampleRate);
     var bit1    = generateTone(baud*2,2,phase, sampleRate);
-    var stopbit = generateTone(baud*2,stopPulses/2,phase, sampleRate); // normally 4 pulses = 2 cycles of high tone = 'bit 1'
+    var stopbit = generateTone(baud*2,stopPulses/2,phase, sampleRate);
     var highwave= generateTone(baud*2,1,phase, sampleRate);
 
     // Write array to audio buffer
