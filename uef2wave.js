@@ -47,19 +47,18 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
           }
         }
         break;
-
         case 0x0100: // dataBlock
-        firstBlock = false;
         var header = acornBlockInfo(UEFchunk.data);
         uefChunks.push({type:"dataBlock", header:header, data:UEFchunk.data, cycles:10*UEFchunk.data.length});
+        blockNumber++;
         break;
 
         case 0x0104: // definedDataBlock
-        firstBlock = false;
         var data = UEFchunk.data.slice(3);
         var format = {bits:UEFchunk.data[0], parity:chr(UEFchunk.data[1]), stopBits:UEFchunk.data[2]};
         var cycles = cyclesPerPacket(format)*data.length;
-        uefChunks.push({type:"definedDataBlock", format:format, header:"", data:data, cycles:cycles});
+        uefChunks.push({type:"definedDataBlock", format:format, header:"Defined format data chunk "+hex(blockNumber), data:data, cycles:cycles});
+        blockNumber++;
         break;
 
         case 0x0110: // carrierTone
@@ -67,7 +66,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
         break;
 
         case 0x0112: // integerGap
-        firstBlock = true;
+        blockNumber = 0;
         uefChunks.push({type:"integerGap", cycles:wordAt(UEFchunk.data,0)*2});
         break;
 
@@ -82,7 +81,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
         break;
 
         case 0x0116: // floatingPointGap - APPROXIMATED
-        firstBlock = true;
+        blockNumber = 0;
         uefChunks.push({type:"integerGap", cycles: carrierAdjust(Math.ceil(floatAt(UEFchunk.data,0) * baud))});
         break;
       }
@@ -95,7 +94,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
     // Adjust carrier tone accoring to parameter
     function carrierAdjust(cycles){
       if (carrierFactor==0) {
-        return (firstBlock) ? cycles : 60; // minimal interblock
+        return (blockNumber>0) ? cycles : 60; // minimal interblock
       }
       else {
         return cycles * carrierFactor;
@@ -127,7 +126,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
     }
 
     // Decode all UEF chunks
-    var firstBlock = true;
+    var blockNumber = 0;
     while (uefPos < uefDataLength) {
       var UEFchunk = readChunk(uefData, uefPos);
       decodeChunk(UEFchunk);

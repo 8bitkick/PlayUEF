@@ -219,7 +219,7 @@ PlayUEF = function() {
                 var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
                 var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(0,delta));
                 document.getElementById("console").innerHTML  = str+"|";
-                document.getElementById("header").innerHTML = "Custom format data block"
+                document.getElementById("header").innerHTML = chunks[thischunk].header;
                 break;
 
                 // Clear console for integerGap
