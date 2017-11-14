@@ -5,16 +5,12 @@
 //
 // Web-based UEF to WAV conversion and player
 // Loads cassette-based games to Acorn Electron and BBC micro
-//
-// Reference:
-//
-// http://electrem.emuunlim.com/UEFSpecs.htm
-// https://www.stairwaytohell.com/essentials/uef2wave.py
 
 
-function Cassette(length, position, title, baud, version) {
-  "use strict";
+// Cassette
+// --------
 
+function cassette(length, position, title, baud, version) {
   function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
     //x+=radius;y+=radius;
     if (typeof stroke == "undefined" ) {
