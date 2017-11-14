@@ -65,22 +65,22 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
         uefChunks.push({type:"carrierTone", cycles:carrierAdjust(wordAt(UEFchunk.data,0))});
         break;
 
-        case 0x0114: // securityCycles
-        uefChunks.push({type:"carrierTone", cycles:(doubleAt(UEFchunk.data,0) & 0x00ffffff)});
+        case 0x0112: // integerGap
+        firstBlock = true;
+        uefChunks.push({type:"integerGap", cycles:wordAt(UEFchunk.data,0)*2});
         break;
 
-        case 0x0111: // carrierToneByte
+        case 0x0111: // carrierToneWithDummyByte
         uefChunks.push({type:"carrierTone", cycles:wordAt(UEFchunk.data,0)}); // before cycles
         uefChunks.push({type:"dataBlock",   data:[0xAA]}); // Dummy Byte
         uefChunks.push({type:"carrierTone", cycles:wordAt(UEFchunk.data,2)}); // after byte
         break;
 
-        case 0x0112: // integerGap
-        firstBlock = true;
-        uefChunks.push({type:"integerGap", cycles: wordAt(UEFchunk.data,0)*2});
+        case 0x0114: // securityCycles - REPLACED WITH CARRIER TONE
+        uefChunks.push({type:"carrierTone", cycles:(doubleAt(UEFchunk.data,0) & 0x00ffffff)});
         break;
 
-        case 0x0116: // floatingPointGap
+        case 0x0116: // floatingPointGap - APPROXIMATED
         firstBlock = true;
         uefChunks.push({type:"integerGap", cycles: carrierAdjust(Math.ceil(floatAt(UEFchunk.data,0) * baud))});
         break;
@@ -131,7 +131,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
     }
 
     // Decode all UEF chunks
-    var firstBlock      = true; // track to reduce firstBlock carrier tones if carrier=0
+    var firstBlock      = true;
     while (uefPos < uefDataLength) {
       var UEFchunk        = readChunk(uefData, uefPos);
       decodeChunk(UEFchunk);
@@ -232,7 +232,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
     }
 
     var uefCycles = 0
-    var numChunks     = uefChunks.length;
+    var numChunks = uefChunks.length;
 
     for (var i = 0; i < numChunks; i++) {
       uefCycles += uefChunks[i].cycles;
@@ -250,11 +250,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
       functions[chunk.type].apply(this, [chunk]);
     }
 
-    var sampleLength = Math.floor(10*samplePos/sampleRate)/10;
-    var estLength    = Math.floor(10*estLength/sampleRate)/10;
-    console.log("TIME DELTA "+(sampleLength-estLength));
-
-    console.log(sampleLength+"s WAV audio at "+baud+" baud");
+    console.log((Math.floor(10*samplePos/sampleRate)/10)+"s WAV audio at "+baud+" baud");
     return new Uint8Array(buildWAVheader(waveBuffer, samplePos, sampleRate));
   }
 
