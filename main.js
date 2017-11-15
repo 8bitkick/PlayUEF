@@ -9,10 +9,10 @@
 
 var VERSION = "1.0 beta 3";
 
-updateStatus = function(status) { document.getElementById("status").innerHTML = status; };
-handleError = function(error) { document.getElementById("spinner").style.borderLeft = "1.1em solid #FF0000";updateStatus(error);throw new Error();};
+var updateStatus = function(status) { document.getElementById("status").innerHTML = status; };
+var handleError = function(error) { document.getElementById("spinner").style.borderLeft = "1.1em solid #FF0000";updateStatus(error);throw new Error();};
 
-PlayUEF = function() {
+var PlayUEF = function() {
   "use strict";
 
   // Get URL parameters
@@ -21,7 +21,7 @@ PlayUEF = function() {
   var FILE  = url.searchParams.get("FILE") || "tapes/Arcadians_E.zip"; // Loads Electron Arcadians locally by default
   var TURBO = url.searchParams.get("TURBO") || 0;
   var PHASE = url.searchParams.get("PHASE") || 180;
-  var LOCAL = url.searchParams.get("LOCAL") || "false";
+  var LOCAL = url.searchParams.get("LOCAL") || false;
   var CARRIER = url.searchParams.get("CARRIER") || 2; // Carrier tone length factor * 2
   var STOPBIT = url.searchParams.get("STOPBIT") || 4; // Stop bit cycles * 2
   var SAMPLE_RATE  = 44100;
@@ -31,73 +31,76 @@ PlayUEF = function() {
   var UEFNAME = "";
 
   PHASE = PHASE*(Math.PI/180);
-  CARRIER=CARRIER/2
-  if (TURBO==1) {STOPBIT=1; CARRIER=0;};
+  CARRIER=CARRIER/2;
+  if (TURBO==1) {STOPBIT=1; CARRIER=0;}
 
   // Downlooad UEF
-  if (LOCAL=="false"){
+  function download(FILE, cb){
     updateStatus("DOWNLOADING "+FILE.split("/").pop());
-    var oReq = new XMLHttpRequest();
-    oReq.open("GET", FILE, true);
-    oReq.responseType = "arraybuffer";
-    oReq.onerror = function (err) {handleError("ERROR DOWNLOADING<br>"+FILE);};
-    oReq.onload = function (oEvent) {
-      if (oReq.status == 200) {
-        console.log("Loaded ",FILE);
-        var filedata = new Uint8Array(oReq.response);
-        handleZip(filedata, FILE);
+    var xhttp = new XMLHttpRequest();
+    xhttp.open("GET", FILE, true);
+    xhttp.responseType = "arraybuffer";
+    xhttp.onerror = function (err) {return null};
+    xhttp.onload = function (e) {
+      if (xhttp.status == 200) {
+        var filedata = new Uint8Array(xhttp.response);
+        cb({file: filedata, name: FILE});
       }
-      else{handleError("ERROR "+oReq.status+" DOWNLOADING<br>"+FILE);}
-    }.bind(this);
-    oReq.send(null);}
-
-    // Get local UEF
-    if (LOCAL=="true") {
-      updateStatus('<input type="file" id="files">');
-      function fileLoadEvent(evt){
-        updateStatus('LOADING');
-        var file = evt.target.files[0];
-        var reader = new FileReader();
-        reader.addEventListener("load", fileRead, false);
-        function fileRead(event){
-          var filedata = new Uint8Array(event.target.result);
-          UEFNAME = file.name;
-          handleZip(filedata, UEFNAME);
-        }
-        reader.readAsArrayBuffer(file);
-      }
-      document.addEventListener("change", fileLoadEvent, false);
+      else{return null}
     }
-
-    // Handle zipped files (containing one UEF and TXT notes, as standard on STH)
-    function handleZip(filedata, filename){
-      console.log(filename);
-      if (filename.split('.').pop().toLowerCase() == 'zip'){
-        var files = {};
-        var unzip = new Zlib.Unzip(filedata);
-        var filenames = unzip.getFilenames();
-        // iterate through files in the zip
-        for (var i = 0, il = filenames.length; i < il; ++i) {
-          console.log("Decompressing... ",filenames[i]);
-          files[filenames[i]] = unzip.decompress(filenames[i]);
-          var extension = filenames[i].split('.').pop().toLowerCase();
-          if (extension=="uef") {var fileToPlay = i;UEFNAME = filenames[i]} // Only one Uef per zip handled for now
-          if (extension=="txt") {TEXTFILE = String.fromCharCode.apply(null, files[filenames[i]]).replace(/\n/g, "<br />");};
-          var UEFfiledata = files[filenames[fileToPlay]];
-        }
-      } else {UEFfiledata = filedata;};
-
-      document.getElementById("status").innerHTML = "CONVERTING";
-      // Do the actual conversion
-      var result  = uef2wave(UEFfiledata, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER);
-
-      var wavfile   = result.wav;
-      var UEFobject = result.uef;
-
-      userInterface(wavfile, UEFobject, UEFNAME, BAUD, SAMPLE_RATE, TEXTFILE);
-    }
+    xhttp.send(null);
   }
 
-  window.onload=function(){
-    PlayUEF();
-  };
+  // Get local UEF
+  function loadLocal(cb){
+    updateStatus("<input type='file' id='files'>");
+    function fileLoadEvent(event){
+      var file = event.target.files[0];
+      updateStatus("LOADING<BR>"+file.name);
+      var reader = new FileReader();
+      reader.addEventListener("load", fileRead, false);
+      function fileRead(event){
+        cb({file: new Uint8Array(event.target.result), name: file.name});
+      }
+      reader.readAsArrayBuffer(file);
+    }
+    document.addEventListener("change", fileLoadEvent, false);
+  }
+
+  // Handle zipped files (containing one UEF and TXT notes, as standard on STH)
+  function handleZip(input){
+    var filedata = input.file;
+    var filename = input.name;
+    console.log(filename);
+    if (filename.split(".").pop().toLowerCase() == "zip"){
+      var files = {};
+      var unzip = new Zlib.Unzip(filedata);
+      var filenames = unzip.getFilenames();
+      // iterate through files in the zip
+      for (var i = 0; i < filenames.length; i++) {
+        document.getElementById("status").innerHTML = "UNZIPPING";
+        console.log("Decompressing... ",filenames[i]);
+        files[filenames[i]] = unzip.decompress(filenames[i]);
+        var extension = filenames[i].split(".").pop().toLowerCase();
+        if (extension=="uef") {var fileToPlay = i;filename = filenames[i]} // Only one Uef per zip handled for now
+        if (extension=="txt") {TEXTFILE = String.fromCharCode.apply(null, files[filenames[i]]).replace(/\n/g, "<br />");};
+        filedata = files[filenames[fileToPlay]];
+      }
+    }
+    return {file:filedata, name:filename};
+  }
+
+  function startPlayer(uef){
+    var uef = handleZip(uef);
+    document.getElementById("status").innerHTML = "CONVERTING";
+    var converted = uef2wave(uef.file, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER);
+    userInterface(converted.wav, converted.uef, uef.name, BAUD, SAMPLE_RATE, TEXTFILE);
+  }
+
+    // Kick-off player with local or downloaded UEF file
+    (LOCAL=="true") ? loadLocal(startPlayer) : download(FILE,startPlayer);
+}
+
+window.onload=function(){
+  PlayUEF();
+};

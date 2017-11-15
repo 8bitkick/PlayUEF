@@ -103,7 +103,7 @@ function userInterface(wavfile, chunks, UEFNAME, BAUD, SAMPLE_RATE, TEXTFILE) {
     }
 
     // Set up audio player
-    var wavname = UEFNAME.split('.').shift().toLowerCase();
+    var wavname = UEFNAME.split('.').shift();
     if (BAUD!=1200) {wavname+=BAUD};
     const blob = new Blob([wavfile], { type: 'audio/wav' });
     const url = window.URL.createObjectURL(blob);
