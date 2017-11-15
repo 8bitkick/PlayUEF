@@ -120,7 +120,13 @@ function player(wavfile, chunks, UEFNAME, BAUD, SAMPLE_RATE, TEXTFILE) {
 
     // Set up listener for WAV save on clicking casssette
     document.getElementById("cassette").addEventListener('click',function ()
-    {saveAs(blob, wavname+'.wav')});
+    {
+      if (confirm("Want to download WAV of "+wavname+"?")) {
+      saveAs(blob, wavname+'.wav')
+} else {
+    // Do nothing!
+}
+    });
 
     // Start animations
     resize();
