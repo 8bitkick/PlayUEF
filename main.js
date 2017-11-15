@@ -36,15 +36,14 @@ var PlayUEF = function() {
 
   // Downlooad UEF
   function download(FILE, cb){
-    updateStatus("DOWNLOADING "+FILE.split("/").pop());
+    updateStatus("DOWNLOADING<BR>"+FILE.split("/").pop());
     var xhttp = new XMLHttpRequest();
     xhttp.open("GET", FILE, true);
     xhttp.responseType = "arraybuffer";
     xhttp.onerror = function (err) {return null};
     xhttp.onload = function (e) {
       if (xhttp.status == 200) {
-        var filedata = new Uint8Array(xhttp.response);
-        cb({file: filedata, name: FILE});
+        cb({file: new Uint8Array(xhttp.response), name: FILE});
       }
       else{return null}
     }
@@ -94,7 +93,7 @@ var PlayUEF = function() {
     var uef = handleZip(uef);
     document.getElementById("status").innerHTML = "CONVERTING";
     var converted = uef2wave(uef.file, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER);
-    userInterface(converted.wav, converted.uef, uef.name, BAUD, SAMPLE_RATE, TEXTFILE);
+    player(converted.wav, converted.uef, uef.name, BAUD, SAMPLE_RATE, TEXTFILE);
   }
 
     // Kick-off player with local or downloaded UEF file
