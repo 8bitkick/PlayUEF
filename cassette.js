@@ -49,22 +49,40 @@ function cassette(length, position, title, baud, version) {
   var c	= document.getElementById("cassette");
   var ctx = c.getContext("2d");
 
-  var tapeBody = "#444444";
+  var tapeBody = "#3a3a3a";
   var tapeLight = "#555555";
-  var tapeDark = "#222222";
+    var tapeMedium = "#222222";
+  var tapeDark = "#1a1a1a";
   // Tape body
-  ctx.fillStyle = tapeBody;
+  ctx.fillStyle = tapeMedium;
   roundRect(ctx, 0, 0, 400, 260, 10, true, false);
 
+  ctx.fillStyle = tapeBody;
+  roundRect(ctx, 3, 3, 400-6, 260-3, 10, true, false);
+
+
   // Tape screws
-  ctx.fillStyle = tapeLight;
-  circle(ctx,14,14,8);
-  circle(ctx,400-14,14,8);
-  circle(ctx,14,260-14,8);
-  circle(ctx,400-14,260-14,8);
+
+
+  function screw(x,y) {
+    ctx.fillStyle = tapeDark;
+circle(ctx,x+1,y+1,5);
+      ctx.fillStyle = tapeLight;
+  circle(ctx,x,y,5);
+ctx.fillStyle = tapeMedium;
+ctx.textAlign = 'center';
+ctx.font="16px Arial";
+ctx.fillText("+",x,y+5);
+
+  }
+
+  screw(14,14);
+  screw(400-14,14);
+  screw(14,260-14);
+  screw(400-14,260-14);
 
   // Nubbin
-  ctx.strokeStyle = tapeDark;
+  ctx.strokeStyle = tapeMedium;
   ctx.beginPath();
   ctx.moveTo(60, 260);
   ctx.lineTo(80, 200);
@@ -131,11 +149,11 @@ function cassette(length, position, title, baud, version) {
     ctx.fillStyle = tapeBody;
     ctx.moveTo(40, 25); //
     ctx.lineTo(25, 40); //
-    ctx.lineTo(25, 25); //
+    ctx.lineTo(24, 24); //
     ctx.fill(); // connect and fill
     ctx.moveTo(400-40, 25); //
     ctx.lineTo(400-25, 40); //
-    ctx.lineTo(400-25, 25); //
+    ctx.lineTo(400-24, 24); //
     ctx.fill(); // connect and fill
 
     ctx.fillStyle = '#000000';
