@@ -147,12 +147,12 @@ function cassette(length, position, title, baud, version) {
 
     // Label top corners
     ctx.fillStyle = tapeBody;
-    ctx.moveTo(40, 25); //
-    ctx.lineTo(25, 40); //
+    ctx.moveTo(39, 24); //
+    ctx.lineTo(24, 39); //
     ctx.lineTo(24, 24); //
     ctx.fill(); // connect and fill
-    ctx.moveTo(400-40, 25); //
-    ctx.lineTo(400-25, 40); //
+    ctx.moveTo(400-39, 24); //
+    ctx.lineTo(400-24, 39); //
     ctx.lineTo(400-24, 24); //
     ctx.fill(); // connect and fill
 
