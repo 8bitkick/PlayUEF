@@ -72,7 +72,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
 
         case 0x0111: // carrierToneWithDummyByte
         uefChunks.push({type:"carrierTone", cycles:wordAt(UEFchunk.data,0)}); // before cycles
-        uefChunks.push({type:"dataBlock",   data:[0xAA], cycles:10}); // Dummy Byte
+        uefChunks.push({type:"dataBlock",   data:[0xAA], cycles:10, header:""}); // Dummy Byte
         uefChunks.push({type:"carrierTone", cycles:wordAt(UEFchunk.data,2)}); // after byte
         break;
 
