@@ -122,10 +122,10 @@ function player(wavfile, chunks, UEFNAME, BAUD, SAMPLE_RATE, TEXTFILE) {
     document.getElementById("cassette").addEventListener('click',function ()
     {
       if (confirm("Want to download WAV of "+wavname+"?")) {
-      saveAs(blob, wavname+'.wav')
-} else {
-    // Do nothing!
-}
+        saveAs(blob, wavname+'.wav')
+      } else {
+        // Do nothing
+      }
     });
 
     // Start animations

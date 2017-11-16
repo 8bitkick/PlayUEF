@@ -51,7 +51,7 @@ function cassette(length, position, title, baud, version) {
 
   var tapeBody = "#3a3a3a";
   var tapeLight = "#555555";
-    var tapeMedium = "#222222";
+  var tapeMedium = "#222222";
   var tapeDark = "#1a1a1a";
   // Tape body
   ctx.fillStyle = tapeMedium;
@@ -66,13 +66,13 @@ function cassette(length, position, title, baud, version) {
 
   function screw(x,y) {
     ctx.fillStyle = tapeDark;
-circle(ctx,x+1,y+1,5);
-      ctx.fillStyle = tapeLight;
-  circle(ctx,x,y,5);
-ctx.fillStyle = tapeMedium;
-ctx.textAlign = 'center';
-ctx.font="16px Arial";
-ctx.fillText("+",x,y+5);
+    circle(ctx,x+1,y+1,5);
+    ctx.fillStyle = tapeLight;
+    circle(ctx,x,y,5);
+    ctx.fillStyle = tapeMedium;
+    ctx.textAlign = 'center';
+    ctx.font="16px Arial";
+    ctx.fillText("+",x,y+5);
 
   }
 

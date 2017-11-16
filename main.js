@@ -10,7 +10,7 @@
 var VERSION = "1.0 beta 3";
 
 var updateStatus = function(status) { document.getElementById("status").innerHTML = status; };
-var handleError = function(error) { document.getElementById("spinner").style.borderLeft = "1.1em solid #FF0000";updateStatus(error);throw new Error();};
+var handleError = function(message, exception) { document.getElementById("spinner").style.borderLeft = "1.1em solid #FF0000";updateStatus("ERROR: "+message);throw exception;};
 
 var PlayUEF = function() {
   "use strict";
@@ -45,7 +45,7 @@ var PlayUEF = function() {
       if (xhttp.status == 200) {
         cb({file: new Uint8Array(xhttp.response), name: FILE});
       }
-      else{return null}
+      else{handleError(xhttp.status+"<br>"+FILE,0);}
     }
     xhttp.send(null);
   }
@@ -72,6 +72,7 @@ var PlayUEF = function() {
     var filename = input.name;
     console.log(filename);
     if (filename.split(".").pop().toLowerCase() == "zip"){
+      try{
       var files = {};
       var unzip = new Zlib.Unzip(filedata);
       var filenames = unzip.getFilenames();
@@ -85,6 +86,7 @@ var PlayUEF = function() {
         if (extension=="txt") {TEXTFILE = String.fromCharCode.apply(null, files[filenames[i]]).replace(/\n/g, "<br />");};
         filedata = files[filenames[fileToPlay]];
       }
+    }catch(e){handleError("trying to unzip<br>"+filename,e);}
     }
     return {file:filedata, name:filename};
   }
