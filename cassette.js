@@ -11,6 +11,7 @@
 // --------
 
 function cassette(length, position, title, baud, version) {
+    var pi = Math.PI;
   function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
     //x+=radius;y+=radius;
     if (typeof stroke == "undefined" ) {
@@ -49,8 +50,8 @@ function cassette(length, position, title, baud, version) {
   var c	= document.getElementById("cassette");
   var ctx = c.getContext("2d");
 
-  var tapeBody = "#3a3a3a";
-  var tapeLight = "#555555";
+  var tapeBody = "#444444";
+  var tapeLight = "#5f5f5f";
   var tapeMedium = "#222222";
   var tapeDark = "#1a1a1a";
   // Tape body
@@ -61,56 +62,9 @@ function cassette(length, position, title, baud, version) {
   roundRect(ctx, 3, 3, 400-3, 260-3, 10, true, false);
 
 
-  // Tape screws
 
 
-  function screw(x,y) {
-    ctx.fillStyle = tapeDark;
-    circle(ctx,x+1,y+1,5);
-    ctx.fillStyle = tapeLight;
-    circle(ctx,x,y,5);
-    ctx.fillStyle = tapeMedium;
-    ctx.textAlign = 'center';
-    ctx.font="16px Arial";
-    ctx.fillText("+",x,y+5);
 
-  }
-
-  screw(14,14);
-  screw(400-14,14);
-  screw(14,260-14);
-  screw(400-14,260-14);
-
-  // Nubbin
-  ctx.lineWidth = 5;
-  ctx.strokeStyle = tapeMedium;
-  ctx.beginPath();
-  ctx.moveTo(60, 260);
-  ctx.lineTo(80, 200);
-  ctx.lineTo(400-80, 200);
-  ctx.stroke();
-  ctx.strokeStyle = tapeLight;
-  ctx.beginPath();
-  ctx.moveTo(400-80, 200);
-  ctx.lineTo(400-60, 260);
-  //ctx.closePath();
-  ctx.stroke();
-
-  // nubbin holes
-  ctx.fillStyle = tapeDark;
-  circle(ctx,105,245,10);
-  circle(ctx,400-105,245,10);
-  circle(ctx,145,235,7);
-  circle(ctx,400-145,235,7);
-  circle(ctx,145,238,7);
-  circle(ctx,400-145,238,7);
-  ctx.fillStyle = "#080808";
-  circle(ctx,105,245,8);
-  circle(ctx,400-105,245,8);
-  circle(ctx,145,235,5);
-  circle(ctx,400-145,235,5);
-  circle(ctx,145,238,7);
-  circle(ctx,400-145,238,5);
 
   // Sprocket window
   ctx.fillStyle = tapeBody;
@@ -118,12 +72,25 @@ function cassette(length, position, title, baud, version) {
 
   // Spools
   ctx.fillStyle = '#440800';
-  // cheat a bit as radius of curature doesnt change
 
-  var leftspool = ((length - position)/900)*30;
-  var rightspool = (position/900)*30;
-  circle(ctx,280,120,40+rightspool);
-  circle(ctx,120,120,40+leftspool);
+  // cheat a bit as radius of curature doesnt change
+  //var leftspool = ((length - position)/900)*30;
+  //var rightspool = (position/900)*30;
+  function spoolDiameter(length){
+    var h = 1.25;
+    var D0 = 40;
+    var top = ((D0-h)*(D0-h))+((4*h*length)/pi);
+    var N = ((h-D0) + Math.sqrt(top))/ 2*h;
+    return (2*N*h)+D0;
+
+  }
+
+  var leftspool = spoolDiameter(length - position);
+  var rightspool = spoolDiameter(position);
+
+
+  circle(ctx,280,120,rightspool);
+  circle(ctx,120,120,leftspool);
 
   ctx.fillStyle = '#bbbbbb';
   circle(ctx,280,120,40);
@@ -133,33 +100,41 @@ function cassette(length, position, title, baud, version) {
   circle(ctx,280,120,30);
   circle(ctx,120,120,30);
 
-  ctx.fillStyle = '#000000';
+  ctx.fillStyle = '#ccccee';
+  circle(ctx,280,120,26);
+  circle(ctx,120,120,26);
+
+  ctx.fillStyle = '#eeeeee';
+  circle(ctx,280,121,25);
+  circle(ctx,120,121,25);
+
+  ctx.fillStyle = "#080808";
   circle(ctx,280,120,20);
   circle(ctx,120,120,20);
 
   // Spool teeth
   ctx.strokeStyle="#eeeeee";
-  var pi = Math.PI;
   var rotation = position;
   for (var angle=0+rotation; angle <= (2*pi)+rotation; angle+=pi/3){
     ctx.beginPath();
-    ctx.moveTo(280-(30*Math.cos(angle)), 120+(30*Math.sin(angle)));
-    ctx.lineTo(280-(30*Math.cos((angle+pi))), 120+(30*Math.sin((angle+pi))));
+    ctx.moveTo(280-(21*Math.cos(angle)), 120+(21*Math.sin(angle)));
+    ctx.lineTo(280-(21*Math.cos((angle+pi))), 120+(21*Math.sin((angle+pi))));
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(120+(30*Math.cos(angle)), 120-(30*Math.sin(angle)));
-    ctx.lineTo(120+(30*Math.cos((angle+pi))), 120-(30*Math.sin((angle+pi))));
+    ctx.moveTo(120+(21*Math.cos(angle)), 120-(21*Math.sin(angle)));
+    ctx.lineTo(120+(21*Math.cos((angle+pi))), 120-(21*Math.sin((angle+pi))));
     ctx.stroke();
   }
 
-/*
+
+ctx.fillStyle = '#eeeeee';
   ctx.strokeStyle="#880000";
   ctx.beginPath();
   ctx.arc(280, 120, 37, -rotation, -rotation+0.5, false);
   ctx.stroke();
   ctx.beginPath();
   ctx.arc(120, 120, 37, -rotation+1, -rotation+1.5, false);
-  ctx.stroke();*/
+  ctx.stroke();
 
 
   // Overlay label again
@@ -171,6 +146,7 @@ function cassette(length, position, title, baud, version) {
 
   // Label top corners
   ctx.fillStyle = tapeBody;
+  ctx.beginPath();
   ctx.moveTo(39, 24); //
   ctx.lineTo(24, 39); //
   ctx.lineTo(24, 24); //
@@ -217,8 +193,68 @@ function cassette(length, position, title, baud, version) {
   ctx.fillStyle = '#000000';
   ctx.fillText("8bitkick",35,185);
 
-  // Smokey window
+  // shadow
   ctx.fillStyle = "rgba(33,33,33, 0.5)";
   ctx.fillRect(35+45,80,330-90,10);
+
+  // markers
+  ctx.strokeStyle="rgba(200,200,200, 0.2)";
+    ctx.lineWidth=1;
+  for (var x=0; x<10; x++){
+    ctx.beginPath();
+    ctx.moveTo(160+(x*10), 110);
+    ctx.lineTo(160+(x*10), 130);
+
+    ctx.stroke();
+  }
+
+  // Nubbin
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = tapeMedium;
+  ctx.beginPath();
+  ctx.moveTo(60, 260);
+  ctx.lineTo(80, 200);
+  ctx.lineTo(400-80, 200);
+  ctx.stroke();
+  ctx.strokeStyle = tapeLight;
+  ctx.beginPath();
+  ctx.moveTo(400-80, 200);
+  ctx.lineTo(400-60, 260);
+  //ctx.closePath();
+  ctx.stroke();
+
+  // nubbin holes
+  ctx.fillStyle = tapeDark;
+  circle(ctx,105,245,10);
+  circle(ctx,400-105,245,10);
+  circle(ctx,145,235,7);
+  circle(ctx,400-145,235,7);
+  circle(ctx,145,238,7);
+  circle(ctx,400-145,238,7);
+  ctx.fillStyle = "#080808";
+  circle(ctx,105,245,8);
+  circle(ctx,400-105,245,8);
+  circle(ctx,145,235,5);
+  circle(ctx,400-145,235,5);
+  circle(ctx,145,238,7);
+  circle(ctx,400-145,238,5);
+
+  // Tape screws
+  function screw(x,y) {
+    ctx.fillStyle = tapeDark;
+    circle(ctx,x+1,y+1,5);
+    ctx.fillStyle = tapeLight;
+    circle(ctx,x,y,5);
+    ctx.fillStyle = tapeMedium;
+    ctx.textAlign = 'center';
+    ctx.font="16px Arial";
+    ctx.fillText("+",x,y+5);
+
+  }
+
+  screw(14,14);
+  screw(400-14,14);
+  screw(14,260-14);
+  screw(400-14,260-14);
 
 };
