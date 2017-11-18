@@ -65,69 +65,52 @@ function cassette(length, position, title, baud, version) {
   ctx.fillStyle = "#333344";
   roundRect(ctx, 80, 80, 400-160, 155-80, 6, true, false);
 
-  // Spools
-  ctx.fillStyle = '#440800';
 
-  // cheat a bit as radius of curature doesnt change
-  //var leftspool = ((length - position)/900)*30;
-  //var rightspool = (position/900)*30;
+  // Spools
+  function drawSpool(x,diameter, rotation){
+    ctx.fillStyle = '#440800';
+    circle(ctx,x,120,diameter);
+    ctx.fillStyle = '#bbbbbb';
+    circle(ctx,x,120,40);
+    ctx.fillStyle = '#eeeeee';
+    circle(ctx,x,120,30);
+    ctx.fillStyle = '#ccccee';
+    circle(ctx,x,120,26);
+    ctx.fillStyle = '#eeeeee';
+    circle(ctx,x,121,25);
+    ctx.fillStyle = "#080808";
+    circle(ctx,x,120,20);
+    // Spool teeth
+    ctx.strokeStyle="#eeeeee";
+    for (var angle=0+rotation; angle <= (2*pi)+rotation; angle+=pi/3){
+      ctx.beginPath();
+      ctx.moveTo(x-(21*Math.cos(angle)), 120+(21*Math.sin(angle)));
+      ctx.lineTo(x-(21*Math.cos((angle+pi))), 120+(21*Math.sin((angle+pi))));
+      ctx.stroke();
+    }
+
+    // Red bits
+    ctx.strokeStyle="#880000";
+    ctx.beginPath();
+    ctx.arc(x, 120, 37, -rotation, -rotation+0.5, false);
+    ctx.stroke();
+  }
+
+  var h = 1.3;
+  var D0 = 40.5;
+
   function spoolDiameter(length){
-    var h = 1.25;
-    var D0 = 40.5;
     var top = ((D0-h)*(D0-h))+((4*h*length)/pi);
     var N = ((h-D0) + Math.sqrt(top))/ 2*h;
     return (2*N*h)+D0;
 
   }
 
-  var leftspool = spoolDiameter(length - position);
-  var rightspool = spoolDiameter(position);
+  var leftDia = spoolDiameter(length - position);
+  var rightDia = spoolDiameter(position);
 
-  circle(ctx,280,120,rightspool);
-  circle(ctx,120,120,leftspool);
-
-  ctx.fillStyle = '#bbbbbb';
-  circle(ctx,280,120,40);
-  circle(ctx,120,120,40);
-
-  ctx.fillStyle = '#eeeeee';
-  circle(ctx,280,120,30);
-  circle(ctx,120,120,30);
-
-  ctx.fillStyle = '#ccccee';
-  circle(ctx,280,120,26);
-  circle(ctx,120,120,26);
-
-  ctx.fillStyle = '#eeeeee';
-  circle(ctx,280,121,25);
-  circle(ctx,120,121,25);
-
-  ctx.fillStyle = "#080808";
-  circle(ctx,280,120,20);
-  circle(ctx,120,120,20);
-
-  // Spool teeth
-  ctx.strokeStyle="#eeeeee";
-  var rotation = position;
-  for (var angle=0+rotation; angle <= (2*pi)+rotation; angle+=pi/3){
-    ctx.beginPath();
-    ctx.moveTo(280-(21*Math.cos(angle)), 120+(21*Math.sin(angle)));
-    ctx.lineTo(280-(21*Math.cos((angle+pi))), 120+(21*Math.sin((angle+pi))));
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(120+(21*Math.cos(angle)), 120-(21*Math.sin(angle)));
-    ctx.lineTo(120+(21*Math.cos((angle+pi))), 120-(21*Math.sin((angle+pi))));
-    ctx.stroke();
-  }
-
-  // Red bits
-  ctx.strokeStyle="#880000";
-  ctx.beginPath();
-  ctx.arc(280, 120, 37, -rotation, -rotation+0.5, false);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(120, 120, 37, -rotation+1, -rotation+1.5, false);
-  ctx.stroke();
+  drawSpool(120,leftDia,((rightDia / leftDia)*position) % (2*pi));
+  drawSpool(280,rightDia,position % (2*pi));
 
   // Mask bottom of tape
   ctx.fillStyle = tapeBody;
