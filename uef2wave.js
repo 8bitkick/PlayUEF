@@ -19,10 +19,10 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
   // check if the UEF is in fact zipped
   if (isValidUEF()==false) {
     try{
-    var gunzip = new Zlib.Gunzip(uefData);
-    uefData = gunzip.decompress();
-  }
-  catch(e) {handleError("Invalid UEF/ZIP file<BR>",e);}
+      var gunzip = new Zlib.Gunzip(uefData);
+      uefData = gunzip.decompress();
+    }
+    catch(e) {handleError("Invalid UEF/ZIP file<BR>",e);}
   }
 
   if (isValidUEF()==false) {handleError("Invalid UEF file",0);}
@@ -113,7 +113,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
         var loadAddress = doubleAt(data,strend+1);
         var executionAddress = doubleAt(data,strend+5);
         var blockNumber = wordAt(data,strend+9);
-        return filename+" "+(("00"+blockNumber.toString(16)).substr(-2))+" "+hex(loadAddress)+" "+hex(executionAddress);
+        return filename+" "+(("00"+blockNumber.toString(16)).substr(-2))+" "+hex4(loadAddress)+" "+hex4(executionAddress);
       }
       else {
         return ""
@@ -240,23 +240,31 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
     var waveBuffer    = new ArrayBuffer(44 + (estLength*2)); // Header is 44 bytes, sample is 16-bit * sampleLength
     var sampleData    = new Int16Array(waveBuffer, 44, estLength);
     var samplePos     = 0;
-
+    var re = /[^\x20-\xff]/g;
     // Parse all chunk objects and write WAV
     for (var i = 0; i < numChunks; i++) {
       var chunk = uefChunks[i];
       uefChunks[i].timestamp = samplePos; // Record start position in audio WAV, given in samples
       functions[chunk.type].apply(this, [chunk]);
+
+      // Array to string for console display
+      if (uefChunks[i].data != null){
+
+        var str = String.fromCharCode.apply(null,uefChunks[i].data);//
+          uefChunks[i].datastr = str.replace(re, ".");
+        }
+
+      }
+
+      console.log((Math.floor(10*samplePos/sampleRate)/10)+"s WAV audio at "+baud+" baud");
+      return new Uint8Array(buildWAVheader(waveBuffer, samplePos, sampleRate));
     }
 
-    console.log((Math.floor(10*samplePos/sampleRate)/10)+"s WAV audio at "+baud+" baud");
-    return new Uint8Array(buildWAVheader(waveBuffer, samplePos, sampleRate));
-  }
-
-  console.time('Decode UEF');
-  var uefChunks = decodeUEF(uefData);
-  console.timeEnd('Decode UEF');
-  console.time('Create WAV');
-  var wavfile = createWAV(uefChunks);
-  console.timeEnd('Create WAV');
-  return {wav:wavfile, uef:uefChunks};
-};
+    console.time('Decode UEF');
+    var uefChunks = decodeUEF(uefData);
+    console.timeEnd('Decode UEF');
+    console.time('Create WAV');
+    var wavfile = createWAV(uefChunks);
+    console.timeEnd('Create WAV');
+    return {wav:wavfile, uef:uefChunks};
+  };
