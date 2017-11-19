@@ -81,7 +81,7 @@ function player(wavfile, chunks, UEFNAME, BAUD, SAMPLE_RATE, TEXTFILE) {
             case "definedDataBlock":
             document.getElementById("console").style.color = "#00aaaa";
             var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
-            var str = chunks[thischunk].slice(delta & 0xfe00,delta);
+            var str = chunks[thischunk].datastr.slice(delta & 0xfe00,delta);
             document.getElementById("console").innerHTML  = str+"|";
             document.getElementById("header").innerHTML = chunks[thischunk].header;
             break;
