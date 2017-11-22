@@ -11,6 +11,7 @@
 // --------
 
 function cassette(length, position, title, baud, version) {
+  var pi = Math.PI;
   function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
     //x+=radius;y+=radius;
     if (typeof stroke == "undefined" ) {
@@ -49,37 +50,177 @@ function cassette(length, position, title, baud, version) {
   var c	= document.getElementById("cassette");
   var ctx = c.getContext("2d");
 
-  var tapeBody = "#3a3a3a";
-  var tapeLight = "#555555";
-  var tapeMedium = "#222222";
+  var tapeBody = "#282828";
+  var tapeLight = "#5f5f5f";
+  var tapeMedium = "#181818";
   var tapeDark = "#1a1a1a";
   // Tape body
   ctx.fillStyle = tapeLight;
-  roundRect(ctx, 0, 0, 400, 260, 10, true, false);
+  roundRect(ctx, 0, 0, 400, 260-2, 10, true, false);
 
   ctx.fillStyle = tapeBody;
-  roundRect(ctx, 3, 3, 400-3, 260-3, 10, true, false);
+  roundRect(ctx, 0, 3, 400-3, 260-5, 10, true, false);
+
+  // Sprocket window
+  ctx.fillStyle = "#333344";
+  roundRect(ctx, 80, 80, 400-160, 155-80, 6, true, false);
 
 
-  // Tape screws
+  // Spools
+  function drawSpool(x,diameter, rotation){
+    ctx.fillStyle = '#440800';
+    circle(ctx,x,120,diameter);
+    ctx.fillStyle = '#bbbbbb';
+    circle(ctx,x,120,40);
+    ctx.fillStyle = '#eeeeee';
+    circle(ctx,x,120,30);
+    ctx.fillStyle = '#ccccee';
+    circle(ctx,x,120,26);
+    ctx.fillStyle = '#eeeeee';
+    circle(ctx,x,121,25);
+    ctx.fillStyle = "#080808";
+    circle(ctx,x,120,20);
+    // Spool teeth
+    ctx.strokeStyle="#eeeeee";
+    for (var angle=0+rotation; angle <= (2*pi)+rotation; angle+=pi/3){
+      ctx.beginPath();
+      ctx.moveTo(x-(21*Math.cos(angle)), 120+(21*Math.sin(angle)));
+      ctx.lineTo(x-(21*Math.cos((angle+pi))), 120+(21*Math.sin((angle+pi))));
+      ctx.stroke();
+    }
 
+    // Red bits
+    ctx.strokeStyle="#880000";
+    ctx.beginPath();
+    ctx.arc(x, 120, 37, -rotation, -rotation+0.5, false);
+    ctx.stroke();
+  }
 
-  function screw(x,y) {
-    ctx.fillStyle = tapeDark;
-    circle(ctx,x+1,y+1,5);
-    ctx.fillStyle = tapeLight;
-    circle(ctx,x,y,5);
-    ctx.fillStyle = tapeMedium;
-    ctx.textAlign = 'center';
-    ctx.font="16px Arial";
-    ctx.fillText("+",x,y+5);
+  var h = 1.3;
+  var D0 = 40.5;
+
+  function spoolDiameter(length){
+    var top = ((D0-h)*(D0-h))+((4*h*length)/pi);
+    var N = ((h-D0) + Math.sqrt(top))/ 2*h;
+    return (2*N*h)+D0;
 
   }
 
-  screw(14,14);
-  screw(400-14,14);
-  screw(14,260-14);
-  screw(400-14,260-14);
+  var leftDia = spoolDiameter(length - position);
+  var rightDia = spoolDiameter(position);
+
+  drawSpool(120,leftDia,((rightDia / leftDia)*position) % (2*pi));
+  drawSpool(280,rightDia,position % (2*pi));
+
+  // Mask bottom of tape
+  ctx.fillStyle = tapeBody;
+  ctx.fillRect(25,190,350,60);
+  ctx.fillRect(60,250,400-120,10);
+
+  // shadow
+  ctx.fillStyle = "rgba(33,33,33, 0.5)";
+  ctx.fillRect(80,85,240,8);
+  ctx.strokeStyle="rgba(33,33,33, 0.5)";
+  ctx.beginPath();
+  ctx.arc(273, 120, 38, pi/2, pi/2*3, true);
+  ctx.stroke();
+
+  // Overlay label again
+  ctx.fillStyle = '#eeeeee';
+  ctx.fillRect(25,25,350,63);
+  ctx.fillRect(25,152,350,39);
+  ctx.fillRect(25,25,55,165);
+  ctx.fillRect(400-35-45,25,55,165);
+
+  ctx.lineWidth = 25;
+  ctx.strokeStyle="#eeeeee";
+  ctx.beginPath();
+  ctx.arc(120, 120, 45, pi/2, pi/2*3, false);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(280, 120, 45, pi/2, pi/2*3, true);
+  ctx.stroke();
+
+  // Label top corners
+  ctx.fillStyle = tapeBody;
+  ctx.beginPath();
+  ctx.moveTo(39, 24); //
+  ctx.lineTo(24, 39); //
+  ctx.lineTo(24, 24); //
+  ctx.fill(); // connect and fill
+  ctx.moveTo(400-39, 24); //
+  ctx.lineTo(400-24, 39); //
+  ctx.lineTo(400-24, 24); //
+  ctx.fill(); // connect and fill
+
+  ctx.fillStyle = '#000000';
+  circle(ctx,280,120,16);
+  circle(ctx,120,120,16);
+
+  ctx.fillStyle = '#111111';
+  ctx.textAlign = 'center';
+  ctx.font="16px Arial";
+  if (title.length > 40) {ctx.font="10px Arial";};
+
+  ctx.fillText(title,200,52);
+
+  ctx.font="10px Arial";
+
+  ctx.fillText("PlayUEF version "+version,200,72);
+  ctx.fillText(baud,340,115);
+  ctx.fillText("baud",340,130);
+
+
+  function download(x,y) {
+    ctx.fillStyle = tapeLight;
+    ctx.fillRect(x,y,30,30);
+    ctx.fillStyle = '#eeeeee';
+    ctx.fillRect(x+2,y+2,26,26);
+    ctx.fillStyle = tapeLight;
+
+    ctx.beginPath();
+    ctx.moveTo(x+8, y+15); //
+    ctx.lineTo(x+22, y+15); //
+    ctx.lineTo(x+15, y+22); //
+    ctx.fill(); // connect and fill
+    ctx.beginPath();
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle=tapeLight;
+    ctx.moveTo(x+8, y+12); //
+    ctx.lineTo(x+22, y+12); //
+    ctx.stroke(); // connect and fill
+    ctx.moveTo(x+15, y+12); //
+    ctx.lineTo(x+15, y+15); //
+    ctx.stroke(); // connect and fill
+
+  }
+
+  //download(43,102.5);
+
+  // sticker stripes
+  var darkColors = ["#0ba5e8","#ad1a93", "#eb2529","#f57819", "#fdd70b", "#66c536"];
+  var size = 4;
+  for(var i = 0; i < 6; i++) {
+    ctx.fillStyle = darkColors[5-i];
+    ctx.fillRect(25,190-((i+1)*size),350,size*.8);
+  }
+
+  ctx.font="20px Arial";
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#000000';
+  ctx.fillText("8bitkick.cc",35,185);
+
+  // markers
+  ctx.strokeStyle="rgba(200,200,200, 0.2)";
+  ctx.lineWidth=1;
+  for (var x=0; x<10; x++){
+    ctx.beginPath();
+    ctx.moveTo(160+(x*10), 110);
+    ctx.lineTo(160+(x*10), 130);
+
+    ctx.stroke();
+  }
 
   // Nubbin
   ctx.lineWidth = 5;
@@ -112,113 +253,22 @@ function cassette(length, position, title, baud, version) {
   circle(ctx,145,238,7);
   circle(ctx,400-145,238,5);
 
-  // Sprocket window
-  ctx.fillStyle = tapeBody;
-  roundRect(ctx, 80, 80, 400-160, 155-80, 6, true, false);
+  // Tape screws
+  function screw(x,y) {
+    ctx.fillStyle = tapeDark;
+    circle(ctx,x+1,y+1,5);
+    ctx.fillStyle = tapeLight;
+    circle(ctx,x,y,5);
+    ctx.fillStyle = tapeMedium;
+    ctx.textAlign = 'center';
+    ctx.font="16px Arial";
+    ctx.fillText("+",x,y+5);
 
-  // Spools
-  ctx.fillStyle = '#440800';
-  // cheat a bit as radius of curature doesnt change
-
-  var leftspool = ((length - position)/900)*30;
-  var rightspool = (position/900)*30;
-  circle(ctx,280,120,40+rightspool);
-  circle(ctx,120,120,40+leftspool);
-
-  ctx.fillStyle = '#bbbbbb';
-  circle(ctx,280,120,40);
-  circle(ctx,120,120,40);
-
-  ctx.fillStyle = '#eeeeee';
-  circle(ctx,280,120,30);
-  circle(ctx,120,120,30);
-
-  ctx.fillStyle = '#000000';
-  circle(ctx,280,120,20);
-  circle(ctx,120,120,20);
-
-  // Spool teeth
-  ctx.strokeStyle="#eeeeee";
-  var pi = Math.PI;
-  var rotation = position;
-  for (var angle=0+rotation; angle <= (2*pi)+rotation; angle+=pi/3){
-    ctx.beginPath();
-    ctx.moveTo(280-(30*Math.cos(angle)), 120+(30*Math.sin(angle)));
-    ctx.lineTo(280-(30*Math.cos((angle+pi))), 120+(30*Math.sin((angle+pi))));
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(120+(30*Math.cos(angle)), 120-(30*Math.sin(angle)));
-    ctx.lineTo(120+(30*Math.cos((angle+pi))), 120-(30*Math.sin((angle+pi))));
-    ctx.stroke();
   }
 
-/*
-  ctx.strokeStyle="#880000";
-  ctx.beginPath();
-  ctx.arc(280, 120, 37, -rotation, -rotation+0.5, false);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(120, 120, 37, -rotation+1, -rotation+1.5, false);
-  ctx.stroke();*/
-
-
-  // Overlay label again
-  ctx.fillStyle = '#eeeeee';
-  ctx.fillRect(25,25,350,55);
-  ctx.fillRect(25,155,350,35);
-  ctx.fillRect(25,25,55,165);
-  ctx.fillRect(400-35-45,25,55,165);
-
-  // Label top corners
-  ctx.fillStyle = tapeBody;
-  ctx.moveTo(39, 24); //
-  ctx.lineTo(24, 39); //
-  ctx.lineTo(24, 24); //
-  ctx.fill(); // connect and fill
-  ctx.moveTo(400-39, 24); //
-  ctx.lineTo(400-24, 39); //
-  ctx.lineTo(400-24, 24); //
-  ctx.fill(); // connect and fill
-
-  ctx.fillStyle = '#000000';
-  circle(ctx,280,120,16);
-  circle(ctx,120,120,16);
-
-
-  ctx.fillStyle = '#111111';
-  ctx.textAlign = 'center';
-  ctx.font="16px Arial";
-  if (title.length > 40) {ctx.font="10px Arial";};
-
-  ctx.fillText(title,200,52);
-
-  ctx.font="10px Arial";
-
-  ctx.fillText("Acorn Electron & BBC Micro UEF player",200,72);
-  ctx.fillText(baud,347,110);
-  ctx.fillText("baud",347,124);
-
-
-  ctx.fillText("PlayUEF",400-347,110);
-  ctx.fillStyle = '#0ba5e8';
-  ctx.font="9px Arial";
-  ctx.fillText(version,400-347,124);
-
-  // sticker stripes
-  var darkColors = ["#0ba5e8","#ad1a93", "#eb2529","#f57819", "#fdd70b", "#66c536"];
-  var size = 4;
-  for(var i = 0; i < 6; i++) {
-    ctx.fillStyle = darkColors[5-i];
-    ctx.fillRect(25,190-((i+1)*size),350,size*.8);
-  }
-
-  ctx.font="20px Arial";
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#000000';
-  ctx.fillText("8bitkick",35,185);
-
-  // Smokey window
-  ctx.fillStyle = "rgba(33,33,33, 0.5)";
-  ctx.fillRect(35+45,80,330-90,10);
+  screw(14,14);
+  screw(400-14,14);
+  screw(14,260-14);
+  screw(400-14,260-14);
 
 };

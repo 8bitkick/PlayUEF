@@ -55,6 +55,7 @@ function player(wavfile, chunks, UEFNAME, BAUD, SAMPLE_RATE, TEXTFILE) {
         var duration = player.duration;
         var currentTime = player.currentTime;
         var bytesPerSample = (BAUD/SAMPLE_RATE)/10; // # tape bytes transmitted per WAV sample, assuming 10 bit packets
+
         // Render cassette frame
         cassette(duration,currentTime,UEFNAME,BAUD,VERSION);
 
@@ -72,7 +73,7 @@ function player(wavfile, chunks, UEFNAME, BAUD, SAMPLE_RATE, TEXTFILE) {
             case "dataBlock":
             document.getElementById("console").style.color = "#00aa00";
             var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
-            var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(delta & 0xfe00,delta));
+            var str = chunks[thischunk].datastr.slice(delta & 0xfe00,delta);
             document.getElementById("console").innerHTML  = str+"|";
             document.getElementById("header").innerHTML = chunks[thischunk].header;
             break;
@@ -80,7 +81,7 @@ function player(wavfile, chunks, UEFNAME, BAUD, SAMPLE_RATE, TEXTFILE) {
             case "definedDataBlock":
             document.getElementById("console").style.color = "#00aaaa";
             var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
-            var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(delta & 0xfe00,delta));
+            var str = chunks[thischunk].datastr.slice(delta & 0xfe00,delta);
             document.getElementById("console").innerHTML  = str+"|";
             document.getElementById("header").innerHTML = chunks[thischunk].header;
             break;
@@ -119,6 +120,7 @@ function player(wavfile, chunks, UEFNAME, BAUD, SAMPLE_RATE, TEXTFILE) {
     document.getElementById('container').innerHTML = '<canvas id="cassette" height="260px" width="400px"></canvas>';
 
     // Set up listener for WAV save on clicking casssette
+
     document.getElementById("cassette").addEventListener('click',function ()
     {
       if (confirm("Want to download WAV of "+wavname+"?")) {

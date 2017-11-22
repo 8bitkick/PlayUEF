@@ -26,32 +26,46 @@ body, html { height:100%; width:100%; overflow-y:hidden;overflow-x:hidden; backg
   color: green;
   margin: 4px;
   font-family: VT323;
+  font-size: 16pt;
+  word-break: break-all;
+}
+
+#footer {
+  position: fixed;
+  bottom: 0px;
+  color: white;
+  margin:24px;
+  font-size: 16pt;
+  font-family: ModeSeven;
 }
 
 #header {
   margin-top: 20px;
   color: white;
   margin: 4px;
+  font-size: 16pt;
   font-family: ModeSeven;
 }
 
-#btn {
-  color: #ffffff;
+.btn {
+  font-family: ModeSeven;
+  font-size: 12pt;
+  color: #dddddd;
+  background: #0000dd;
   font-size: 20px;
-  background: #0000ff;
   padding: 5px;
   text-decoration: none;
   border: none;
   outline:none;
-  margin: 10px;
+  margin-right: 8px;
 }
 
-#btn:hover {
-  color: #ffff00;
+.btn:hover, .btn:active {
+  color: #000000;
+  background: #dddd00;
   text-decoration: none;
   border: none;
   outline:none;
-  margin: 0px;
 }
 
 #container {
