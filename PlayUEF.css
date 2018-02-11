@@ -49,7 +49,7 @@ body, html { height:100%; width:100%; overflow-y:hidden;overflow-x:hidden; backg
 
 .btn {
   font-family: ModeSeven;
-  font-size: 12pt;
+  font-size: 11pt;
   color: #dddddd;
   background: #0000dd;
   font-size: 20px;
@@ -67,6 +67,8 @@ body, html { height:100%; width:100%; overflow-y:hidden;overflow-x:hidden; backg
   border: none;
   outline:none;
 }
+
+
 
 #container {
   margin-top: 10px;

@@ -14,19 +14,6 @@
 function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
   "use strict";
 
-  var isValidUEF = function() {return ((String.fromCharCode.apply(null,uefData.slice(0, 9)) == "UEF File!"));}
-
-  // check if the UEF is in fact zipped
-  if (isValidUEF()==false) {
-    try{
-      var gunzip = new Zlib.Gunzip(uefData);
-      uefData = gunzip.decompress();
-    }
-    catch(e) {handleError("Invalid UEF/ZIP file<BR>",e);}
-  }
-
-  if (isValidUEF()==false) {handleError("Invalid UEF file",0);}
-
   // TODO - Variables passed to decode and WAV creation
   var uefChunks      = [];
   var samplesPerCycle= Math.floor(sampleRate / baud); // Audio samples per base cycle
@@ -138,7 +125,6 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
     return uefChunks;
   }
 
-
   function createWAV (uefChunks) {
     // Create 16-bit array of a sine wave for given frequency, cycles and phase
     function generateTone (frequency, cycles, phase, sampleRate) {
@@ -241,6 +227,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
     var sampleData    = new Int16Array(waveBuffer, 44, estLength);
     var samplePos     = 0;
     var re = /[^\x20-\xff]/g;
+
     // Parse all chunk objects and write WAV
     for (var i = 0; i < numChunks; i++) {
       var chunk = uefChunks[i];
