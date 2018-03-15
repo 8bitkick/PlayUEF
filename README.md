@@ -3,7 +3,11 @@ PlayUEF is a javascript player for UEF format Acorn Electron and BBC Micro casse
 
 Just connect your computer's cassette port to the headphone socket on a laptop or smartphone and you're ready to load games!
 
-You can try a demo version of it at http://playuef.8bitkick.cc
+
+Usage
+-----
+
+PlayUEF is ready to use immediately, for free, linked to over 1000 games, at http://playuef.8bitkick.cc
 
 
 ![Cassette player](/docs/tape.gif?raw=true)
