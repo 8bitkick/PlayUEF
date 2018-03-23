@@ -10,19 +10,12 @@ Usage
 PlayUEF is ready to use immediately, for free, linked to over 1000 games, at http://playuef.8bitkick.cc
 
 
+
 ![Cassette player](/docs/tape.gif?raw=true)
 
 
-Running locally
----------------
 
-Set up a local web server as below and navigate to http://localhost:8000/PlayUEF.html in your web browser
 
-    $ cd PlayUEF
-    $ python -m SimpleHTTPServer 8000
-    Serving HTTP on 0.0.0.0 port 8000 ...
-
-For testing purposes http://localhost:8000/test.html fetches links to the STH UEF archive.
 
 Local UEF conversion & WAV download
 -----------------------------------
@@ -104,6 +97,16 @@ These seem to usually reflect mechanical variance of original cassette player be
 To-do list
 * Test on Acorn Atom
 
+Running locally
+---------------
+
+For development purposes you can up a local web server as below and navigate to http://localhost:8000/PlayUEF.html in your web browser
+
+    $ cd PlayUEF
+    $ python -m SimpleHTTPServer 8000
+    Serving HTTP on 0.0.0.0 port 8000 ...
+
+http://localhost:8000/test.html generates links to the STH UEF archive.
 
 Thanks
 ------
