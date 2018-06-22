@@ -1,7 +1,5 @@
 // PlayUEF
-// Copyright (c) 2017 8bitkick
-//
-// www.8bitkick.cc
+// 2017 8bitkick.cc
 //
 // Web-based UEF to WAV conversion and player
 // Loads cassette-based games to Acorn Electron and BBC micro
