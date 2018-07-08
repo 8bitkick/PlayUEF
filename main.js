@@ -30,7 +30,7 @@ var PlayUEF = function() {
   var UEFNAME = "";
 
   var RAW = url.searchParams.get("RAW") || false;
-  var ATOM = url.searchParams.get("ATOM") || false;
+  var ATOM = url.searchParams.get("ATM") || false;
   var LOAD = url.searchParams.get("LOAD") || 0x0e00;
   var EXEC = url.searchParams.get("EXEC") || 0x0e00;
   var TITLE = url.searchParams.get("TITLE") || "PROGRAM";
