@@ -44,7 +44,7 @@ URL parameters
 
 * `LOCAL=true` Prompt user to select local file
 
-* `ATOM=true` Source file is an ATM type Atom file 
+* `ATM=true` Source file is an ATM archive file - see [Atom Software Archive](https://stardot.org.uk/forums/viewtopic.php?f=44&t=6544). 
 
 * `BAUD=<int>` Change base frequency. Defaults to Acorn standard 1200 Hz.
   * e.g. `BAUD=1400` works comfortably on my Acorn Electron and BBC Micro issue 7
@@ -98,8 +98,6 @@ Ignored
 
 These seem to usually reflect mechanical variance of original cassette player behavior. As we just want to load game data rather than recreate archival quality audio, these are ignored.
 
-To-do list
-* Test on Acorn Atom
 
 
 Thanks
