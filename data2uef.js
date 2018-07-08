@@ -3,6 +3,7 @@
 //
 // www.8bitkick.cc
 //
+// UEF encodes given file to acorn cassette format chunks (BBC / Electron)
 
 
 function data2uef (fileData,loadAddress,executionAddress,title){
@@ -68,7 +69,8 @@ function data2uef (fileData,loadAddress,executionAddress,title){
     }
 
     // UEF identifier
-    addData (charArray("UEF File!   "));
+    addData (charArray("UEF File!"));
+    addData ([0,0,0]);
     // Info
     addChunk (0x0000, charArray("PlayUEF make v0.1"+String.fromCharCode(0)));
     // Carrier tone

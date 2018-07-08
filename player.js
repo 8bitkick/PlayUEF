@@ -15,6 +15,7 @@ function player(wavfile, chunks, UEFNAME, BAUD, SAMPLE_RATE, TEXTFILE) {
   var player = document.getElementById('audio');
   var fps = 30;
   var thischunk = 0;
+  BAUD = 300;
 
   // resize cassette on browser resize
   function resize(){
@@ -54,7 +55,7 @@ function player(wavfile, chunks, UEFNAME, BAUD, SAMPLE_RATE, TEXTFILE) {
         // Get position of audio player
         var duration = player.duration;
         var currentTime = player.currentTime;
-        var bytesPerSample = (BAUD/SAMPLE_RATE)/10; // # tape bytes transmitted per WAV sample, assuming 10 bit packets
+        var bytesPerSample = BAUD==300 ? (BAUD/SAMPLE_RATE)/10.5 : (BAUD/SAMPLE_RATE)/10; // # tape bytes transmitted per WAV sample, assuming 10 bit packets. Extra wave on Atom stop bit at 300 baud
 
         // Render cassette frame
         cassette(duration,currentTime,UEFNAME,BAUD,VERSION);

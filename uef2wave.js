@@ -16,7 +16,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
 
   // TODO - Variables passed to decode and WAV creation
   var uefChunks      = [];
-  var samplesPerCycle= Math.floor(sampleRate / baud); // Audio samples per base cycle
+  var samplesPerCycle= Math.floor(sampleRate / 300); // Audio samples per base cycle DEBUG
   var uefPos         = 12; // skip over "UEF File!"
   var uefDataLength  = uefData.length;
   var parityInvert   = 0;
@@ -25,7 +25,6 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
   function decodeUEF(uefData){
     function decodeChunk(UEFchunk) {
       switch (UEFchunk.id){
-
         case 0x0000: // originInformation
         var info = String.fromCharCode.apply(null,UEFchunk.data);
         console.log("UEF info: "+info);
@@ -45,9 +44,10 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
 
         case 0x0104: // definedDataBlock
         var data = UEFchunk.data.slice(3);
+        var header = atomBlockInfo(data);
         var format = {bits:UEFchunk.data[0], parity:chr(UEFchunk.data[1]), stopBits:UEFchunk.data[2]};
         var cycles = cyclesPerPacket(format)*data.length;
-        uefChunks.push({type:"definedDataBlock", format:format, header:"Defined format data chunk "+hex(blockNumber), data:data, cycles:cycles});
+        uefChunks.push({type:"definedDataBlock", format:format, header:header, data:data, cycles:cycles});
         blockNumber++;
         break;
 
@@ -66,6 +66,10 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
         uefChunks.push({type:"carrierTone", cycles:wordAt(UEFchunk.data,2)}); // after byte
         break;
 
+        case 0x0117: // data encoding format change
+        uefChunks.push({type:"encodingChange", cycles:0, baud:wordAt(UEFchunk.data,0)});
+        break;
+
         case 0x0114: // securityCycles - REPLACED WITH CARRIER TONE
         uefChunks.push({type:"carrierTone", cycles:(doubleAt(UEFchunk.data,0) & 0x00ffffff)});
         break;
@@ -74,11 +78,30 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
         blockNumber = 0;
         uefChunks.push({type:"integerGap", cycles: carrierAdjust(Math.ceil(floatAt(UEFchunk.data,0) * baud))});
         break;
+        /*
+        case 0x0005: // floatingPointGap - APPROXIMATED
+        machine = "unknown";
+        console.log(UEFchunk.data[0]>>4);
+        switch (UEFchunk.data[0]>>4) {
+          case 0: machine = "BBC Micro Model A";
+          case 1: machine = "Acorn Electron";
+          case 2: machine = "BBC Micro Model B";
+          case 3: machine = "BBC Master";
+          case 4: machine = "Acorn Atom";
+        }
+        console.log("Machine: "+machine);
+        break;*/
+
+        default:
+        console.log("WARN:  Chunk 0x"+hex4(UEFchunk.id)+" not handled");
+        break;
       }
+
     }
 
     function cyclesPerPacket(format){
-      return 1+format.bits+(format.parity=="N" ? 0 : 1)+format.stopBits;
+      var sb = (format.stopBits > 127) ? (256-format.stopBits)+0.5 : format.stopBits;
+      return 1+format.bits+(format.parity=="N" ? 0 : 1)+sb;
     }
 
     // Adjust carrier tone accoring to parameter
@@ -106,6 +129,24 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
         return ""
       }
     }
+
+    // Cassette Filing System header http://beebwiki.mdfs.net/Acorn_cassette_format
+    function atomBlockInfo (data){
+      if (data[0]==0x2A && data.length>24) {
+        function is0xD(element) {return element == 0x0D;}
+        var strend = data.findIndex(is0xD);
+        var filename = String.fromCharCode.apply(null,data.slice(4,strend));
+        var loadAddress = data[7+strend]<<8 | data[8+strend];
+        var executionAddress = data[5+strend]<<8 | data[6+strend];
+        var blockNumber = data[2+strend]<<8 | data[3+strend];
+        return filename+" "+(("00"+blockNumber.toString(16)).substr(-2))+" "+hex4(loadAddress)+" "+hex4(executionAddress)+" (Atom)";
+      }
+      else {
+        return ""
+      }
+    }
+
+
 
     function readChunk(uefData, pos) {
       var UEFchunk = {
@@ -168,6 +209,11 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
 
     // Custom block data format and Acorn Atom
     var writeDefinedByte = function(byte,format){
+      if (format.stopBits > 127){ // Acorn Atom, for example
+        format.stopBits=256-format.stopBits;
+        format.extraWave=1;
+      };
+
       if (format.parity != "N"){
         var paritybit = byte;
         paritybit ^= (paritybit >> 4);
@@ -183,8 +229,9 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
         byte = byte >>1;
       }
       if (format.parity !="N") {writeBit(paritybit);};
+
       for (var i = 0; i < format.stopBits; i++) {
-        writeSample(bit1);
+        writeSample(stopbit);
       }
       if (format.extraWave==1) {writeSample(highwave);};
     }
@@ -199,7 +246,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
 
     // Write carrier tone using '1' bits
     var writeTone = function(chunk) {
-      for (var i = 0; i < (chunk.cycles); i++) {writeSample(bit1);}
+      for (var i = 0; i < (chunk.cycles); i++) {writeSample(highwave);}
     }
 
     // Gap advances sample position pointer, assumes array is zero filled
@@ -207,12 +254,27 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
       samplePos+= samplesPerCycle * chunk.cycles;
     }
 
+    // Set 1200 or 300 baud bit encoding (base frequency remains 1200 / unchanged)
+    var encodingChange = function(chunk) {
+
+      if (chunk.baud==300){ // Acorn Atom for example
+        console.log("encodingChange: "+chunk.baud);
+        baud = 1200;
+        bit0    = generateTone(baud,4,phase, sampleRate);
+        bit1    = stopbit = generateTone(baud*2,8,phase, sampleRate);
+      } else { // back to default
+        bit0    = generateTone(baud,1,phase, sampleRate);
+        bit1    = stopbit = generateTone(baud*2,2,phase, sampleRate);
+      }
+    }
+
     // Define functions to apply to uefChunk tokens
     var functions = {
       integerGap:         writeGap,
       carrierTone:        writeTone,
       dataBlock:          writeStandardBlock,
-      definedDataBlock:   writeDefinedBlock
+      definedDataBlock:   writeDefinedBlock,
+      encodingChange:     encodingChange
     }
 
     var uefCycles = 0
@@ -238,20 +300,20 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
       if (uefChunks[i].data != null){
 
         var str = String.fromCharCode.apply(null,uefChunks[i].data);//
-          uefChunks[i].datastr = str.replace(re, ".");
-        }
-
+        uefChunks[i].datastr = str.replace(re, ".");
       }
-
-      console.log((Math.floor(10*samplePos/sampleRate)/10)+"s WAV audio at "+baud+" baud");
-      return new Uint8Array(buildWAVheader(waveBuffer, samplePos, sampleRate));
     }
 
-    console.time('Decode UEF');
-    var uefChunks = decodeUEF(uefData);
-    console.timeEnd('Decode UEF');
-    console.time('Create WAV');
-    var wavfile = createWAV(uefChunks);
-    console.timeEnd('Create WAV');
-    return {wav:wavfile, uef:uefChunks};
-  };
+    console.log((Math.floor(10*samplePos/sampleRate)/10)+"s WAV audio");
+    return new Uint8Array(buildWAVheader(waveBuffer, samplePos, sampleRate));
+  }
+
+  console.time('Decode UEF');
+  var uefChunks = decodeUEF(uefData);
+  console.log(uefChunks);
+  console.timeEnd('Decode UEF');
+  console.time('Create WAV');
+  var wavfile = createWAV(uefChunks);
+  console.timeEnd('Create WAV');
+  return {wav:wavfile, uef:uefChunks};
+};

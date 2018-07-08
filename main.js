@@ -7,7 +7,7 @@
 // Loads cassette-based games to Acorn Electron and BBC micro
 //
 
-var VERSION = "1.0 beta 3";
+var VERSION = "1.0 beta 4";
 
 var updateStatus = function(status) { document.getElementById("status").innerHTML = status; };
 var handleError = function(message, exception) { document.getElementById("spinner").style.borderLeft = "1.1em solid #FF0000";updateStatus("ERROR: "+message);throw exception;};
@@ -30,6 +30,7 @@ var PlayUEF = function() {
   var UEFNAME = "";
 
   var RAW = url.searchParams.get("RAW") || false;
+  var ATOM = url.searchParams.get("ATOM") || false;
   var LOAD = url.searchParams.get("LOAD") || 0x0e00;
   var EXEC = url.searchParams.get("EXEC") || 0x0e00;
   var TITLE = url.searchParams.get("TITLE") || "PROGRAM";
@@ -52,7 +53,7 @@ var PlayUEF = function() {
     xhttp.onerror = function (err) {return null};
     xhttp.onload = function (e) {
       if (xhttp.status == 200) {
-        cb(handleZip({file: new Uint8Array(xhttp.response), name: FILE}));
+        cb(handleFile({file: new Uint8Array(xhttp.response), name: FILE}));
       }
       else{handleError(xhttp.status+"<br>"+FILE,0);}
     }
@@ -68,14 +69,21 @@ var PlayUEF = function() {
       var reader = new FileReader();
       reader.addEventListener("load", fileRead, false);
       function fileRead(event){
-        cb(handleZip({file: new Uint8Array(event.target.result), name: file.name}));}
+        cb(handleFile({file: new Uint8Array(event.target.result), name: file.name}));}
         reader.readAsArrayBuffer(file);
       }
       document.addEventListener("change", fileLoadEvent, false);
     }
 
     // Handle zipped files (containing one UEF and TXT notes, as standard on STH)
-    function handleZip(input){
+    function handleFile(input){
+
+      // If it's an ATOM file, convert to UEF and return it
+      if (ATOM=="true"){
+        return atm2uef(input.file);
+      }
+
+
       var filedata = input.file;
       var filename = input.name;
       console.log(filename);
@@ -138,8 +146,6 @@ var PlayUEF = function() {
 */
 
 
-
-
 // Get local UEF
 function loadLocalRaw(cb){
   updateStatus("<p>Create UEF from data</p><input class='btn' type='file' id='files'>");
@@ -159,7 +165,9 @@ function loadLocalRaw(cb){
       var width = 640;
 
       img.onload = function(){
-
+        var runlength = 0;
+        var thisvalue = 0;
+        var line = "";
         canvas.width = width;
         canvas.height = height;
         ctx.drawImage(img,0,0,width,height);
@@ -169,6 +177,7 @@ function loadLocalRaw(cb){
         for (var y = 0; y<height; y+=8){
            document.getElementById("status").innerHTML="<p>CONVERTING "+(y/2.56)+"%<p>";
           for (var x = 0; x<width; x+=8){
+
             for (var yy = 0; yy<8; yy+=1){
               var pixelSource = ctx.getImageData(x, y+yy, 8, 1).data;
               //console.log(pixelSource);
@@ -177,9 +186,24 @@ function loadLocalRaw(cb){
                 if (pixelSource[p*4] > 127) {pixelDest = pixelDest | (1<<(7-p));}
               }
               data.push(pixelDest);
+
+                /* RLE
+                if ((thisvalue == pixelDest) && runlength<255) {runlength++;} else {
+                  line = line + thisvalue + "," + runlength + ","
+                  thisvalue = pixelDest;
+                  runlength = 1;
+
+                }
+                */
+
+                line = line + pixelDest + ",";
+
+
+
             }
           }
         }
+        console.log(line);
         var uef = data2uef(new Uint8Array (data), LOAD, EXEC, TITLE);
         document.getElementById("footer").innerHTML = "<button id='downloadUEF' class='btn'>Download UEF</button>";
         const blobT = new Blob([uef],{ type: 'text/plain' });
