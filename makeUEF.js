@@ -1,147 +1,109 @@
 const fs = require('fs');
 
-var crcTable = [0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5,
-  0x60c6, 0x70e7, 0x8108, 0x9129, 0xa14a, 0xb16b,
-  0xc18c, 0xd1ad, 0xe1ce, 0xf1ef, 0x1231, 0x0210,
-  0x3273, 0x2252, 0x52b5, 0x4294, 0x72f7, 0x62d6,
-  0x9339, 0x8318, 0xb37b, 0xa35a, 0xd3bd, 0xc39c,
-  0xf3ff, 0xe3de, 0x2462, 0x3443, 0x0420, 0x1401,
-  0x64e6, 0x74c7, 0x44a4, 0x5485, 0xa56a, 0xb54b,
-  0x8528, 0x9509, 0xe5ee, 0xf5cf, 0xc5ac, 0xd58d,
-  0x3653, 0x2672, 0x1611, 0x0630, 0x76d7, 0x66f6,
-  0x5695, 0x46b4, 0xb75b, 0xa77a, 0x9719, 0x8738,
-  0xf7df, 0xe7fe, 0xd79d, 0xc7bc, 0x48c4, 0x58e5,
-  0x6886, 0x78a7, 0x0840, 0x1861, 0x2802, 0x3823,
-  0xc9cc, 0xd9ed, 0xe98e, 0xf9af, 0x8948, 0x9969,
-  0xa90a, 0xb92b, 0x5af5, 0x4ad4, 0x7ab7, 0x6a96,
-  0x1a71, 0x0a50, 0x3a33, 0x2a12, 0xdbfd, 0xcbdc,
-  0xfbbf, 0xeb9e, 0x9b79, 0x8b58, 0xbb3b, 0xab1a,
-  0x6ca6, 0x7c87, 0x4ce4, 0x5cc5, 0x2c22, 0x3c03,
-  0x0c60, 0x1c41, 0xedae, 0xfd8f, 0xcdec, 0xddcd,
-  0xad2a, 0xbd0b, 0x8d68, 0x9d49, 0x7e97, 0x6eb6,
-  0x5ed5, 0x4ef4, 0x3e13, 0x2e32, 0x1e51, 0x0e70,
-  0xff9f, 0xefbe, 0xdfdd, 0xcffc, 0xbf1b, 0xaf3a,
-  0x9f59, 0x8f78, 0x9188, 0x81a9, 0xb1ca, 0xa1eb,
-  0xd10c, 0xc12d, 0xf14e, 0xe16f, 0x1080, 0x00a1,
-  0x30c2, 0x20e3, 0x5004, 0x4025, 0x7046, 0x6067,
-  0x83b9, 0x9398, 0xa3fb, 0xb3da, 0xc33d, 0xd31c,
-  0xe37f, 0xf35e, 0x02b1, 0x1290, 0x22f3, 0x32d2,
-  0x4235, 0x5214, 0x6277, 0x7256, 0xb5ea, 0xa5cb,
-  0x95a8, 0x8589, 0xf56e, 0xe54f, 0xd52c, 0xc50d,
-  0x34e2, 0x24c3, 0x14a0, 0x0481, 0x7466, 0x6447,
-  0x5424, 0x4405, 0xa7db, 0xb7fa, 0x8799, 0x97b8,
-  0xe75f, 0xf77e, 0xc71d, 0xd73c, 0x26d3, 0x36f2,
-  0x0691, 0x16b0, 0x6657, 0x7676, 0x4615, 0x5634,
-  0xd94c, 0xc96d, 0xf90e, 0xe92f, 0x99c8, 0x89e9,
-  0xb98a, 0xa9ab, 0x5844, 0x4865, 0x7806, 0x6827,
-  0x18c0, 0x08e1, 0x3882, 0x28a3, 0xcb7d, 0xdb5c,
-  0xeb3f, 0xfb1e, 0x8bf9, 0x9bd8, 0xabbb, 0xbb9a,
-  0x4a75, 0x5a54, 0x6a37, 0x7a16, 0x0af1, 0x1ad0,
-  0x2ab3, 0x3a92, 0xfd2e, 0xed0f, 0xdd6c, 0xcd4d,
-  0xbdaa, 0xad8b, 0x9de8, 0x8dc9, 0x7c26, 0x6c07,
-  0x5c64, 0x4c45, 0x3ca2, 0x2c83, 0x1ce0, 0x0cc1,
-  0xef1f, 0xff3e, 0xcf5d, 0xdf7c, 0xaf9b, 0xbfba,
-  0x8fd9, 0x9ff8, 0x6e17, 0x7e36, 0x4e55, 0x5e74,
-  0x2e93, 0x3eb2, 0x0ed1, 0x1ef0];
-
-  // https://gist.github.com/chitchcock/5112270
-  function crc16(s) {
-    var crc = 0xFFFF;
-    var j, i;
-    for (i = 0; i < s.length; i++) {
-      let c = (typeof s === "string") ? s.charCodeAt(i) & 0xff: s[i] & 0xff;
-      if (c > 255) {
-        throw new RangeError();
-      }
-      j = (c ^ (crc >> 8)) & 0xFF;
-      crc = crcTable[j] ^ (crc << 8);
+// http://beebwiki.mdfs.net/CRC-16
+function crc16(d) {
+  const poly = 0x1021;
+  let crc = 0x0000;
+  for (let num = 0; num < d.length; num++) {
+    let c = (typeof d === "string") ? d.charCodeAt(num) & 0xff: d[num] & 0xff;
+    crc = crc ^ (c<<8)
+    for (let i=0; i<8; i++){
+      crc = crc << 1;                /* rotate */
+      if (crc & 0x10000)             /* bit 15 was set (now bit 16)... */
+      {crc = (crc ^ poly) & 0xFFFF;} /* XOR with XMODEM polynomic */
     }
-    return ((crc ^ 0) & 0xFFFF);
   }
 
-  Array.prototype.add = function(d, l){
-    if (l) {
-      for (let b=0; b<l; b++){
-        this.push(d & 0xff);
-        d>>=8}
-      } else {
-        for (let a=0; a<d.length; a++){
-          let c = (typeof d === "string") ? d.charCodeAt(a) & 0xff: d[a] & 0xff;
-          this.push(c);
-        }
+  crc = (crc << 8) & 0xff00 | (crc >> 8);
+  return crc;
+}
+
+Array.prototype.add = function(d, l){
+  if (l) {
+    for (let b=0; b<l; b++){
+      this.push(d & 0xff);
+      d>>=8}
+    } else {
+      for (let a=0; a<d.length; a++){
+        let c = (typeof d === "string") ? d.charCodeAt(a) & 0xff: d[a] & 0xff;
+        this.push(c);
       }
     }
+  }
 
-    function makeAcornBlock(filename, loadAddress, execAddress, payload, blockNumber, eof){
-      let block = [];
+  function makeAcornBlock(filename, loadAddress, execAddress, payload, blockNumber, eof){
+    let block = [];
 
-      // header
-      block.add(0x2A,1);                            // One synchronisation byte (&2A).
-      block.add(filename);                          // File name (one to ten characters).
-      block.add(0x00,1);                            // One end of file name marker byte (&00).
-      block.add(loadAddress,4);                     // Load address of file, four bytes, low byte first.
-      block.add(execAddress,4);                     // Execution address of file, four bytes, low byte first.
-      block.add(blockNumber,2);                     // Block number, two bytes, low byte first.
-      block.add(payload.length,2);                  // Data block length, two bytes, low byte first.
-      block.add(eof ? 1<<7 : 0);                    // Block flag (Bit 7), one byte.
-      block.add(0,4);                               // Spare, four bytes, currently &00.
-      let headerCRC = crc16(block.slice(1,block.length));
-      block.add(headerCRC,2);                       // CRC on header, two bytes.
+    // header
+    block.add(0x2A,1);                            // One synchronisation byte (&2A).
+    block.add(filename);                          // File name (one to ten characters).
+    block.add(0x00,1);                            // One end of file name marker byte (&00).
+    block.add(loadAddress,4);                     // Load address of file, four bytes, low byte first.
+    block.add(execAddress,4);                     // Execution address of file, four bytes, low byte first.
+    block.add(blockNumber,2);                     // Block number, two bytes, low byte first.
+    block.add(payload.length,2);                  // Data block length, two bytes, low byte first.
+    block.add(eof ? 1<<7 : 0,1);                    // Block flag (Bit 7), one byte.
+    block.add(0,4);                               // Spare, four bytes, currently &00.
+    let headerCRC = crc16(block.slice(1,block.length));
+    console.log(block.slice(1,block.length))
+    block.add(headerCRC,2);                       // CRC on header, two bytes.
 
-      // data
-      block.add(payload);
-      let dataCRC = crc16(payload);
-      block.add(dataCRC,2);                         // CRC on data, two bytes.
-      return block;
-    }
+    // data
+    block.add(payload);
+    let dataCRC = crc16(payload);
+    block.add(dataCRC,2);
+    console.log(headerCRC.toString(16)+" "+dataCRC.toString(16))                      // CRC on data, two bytes.
+    return block;
+  }
 
-    function makeUEF(filename, loadAddress, execAddress, payload){
-      let UEF = [];
-      let blockNumber = 0;
-      let blockStart = 0;
-      let blockEnd = 0;
+  function makeUEF(filename, loadAddress, execAddress, payload){
+    let UEF = [];
+    let blockNumber = 0;
+    let blockStart = 0;
+    let blockEnd = 0;
 
-      UEF.add("UEF File!");
-      UEF.add([0,0,0]);
+    UEF.add("UEF File!");
+    UEF.add([0,0,0]);
+
+    UEF.add(0x0110        ,2); // carrier tone
+    UEF.add(2             ,4); // chunk length
+    UEF.add(1500          ,2); // chunk length
+
+    while(blockStart < payload.length-1){
+      let EOF = false
+      let blockEnd = blockStart+255;
+
+      if (blockEnd>=payload.length-1) {
+        blockEnd = payload.length-1;
+        EOF=true;
+      }
+
+      let blockData = payload.slice(blockStart, blockEnd+1);
+      //console.log(blockData+"\n\n")
+
+      let block = makeAcornBlock(filename, loadAddress, execAddress, blockData, blockNumber, EOF);
 
       UEF.add(0x0110        ,2); // carrier tone
       UEF.add(2             ,4); // chunk length
-      UEF.add(1500          ,2); // chunk length
+      UEF.add(600           ,2); // chunk length
 
-      while(blockStart < payload.length-1){
-        let EOF = false
-        let blockEnd = blockStart+255;
+      UEF.add(0x0100        ,2); // data block
+      UEF.add(block.length  ,4); // chunk length
+      UEF.add(block);            // block data
 
-        if (blockEnd>=payload.length-1) {
-          blockEnd = payload.length-1;
-          EOF=true;
-        }
-
-        let blockData = payload.slice(blockStart, blockEnd+1);
-        console.log(blockData+"\n\n")
-
-        let block = makeAcornBlock(filename, loadAddress, execAddress, blockData, blockNumber, EOF);
-
-        UEF.add(0x0110        ,2); // carrier tone
-        UEF.add(2             ,4); // chunk length
-        UEF.add(600           ,2); // chunk length
-
-        UEF.add(0x0100        ,2); // data block
-        UEF.add(block.length  ,4); // chunk length
-        UEF.add(block);            // block data
-
-        blockStart=blockEnd+1;
-        blockNumber++;
-      }
-
-      UEF.add(0x0110        ,2); // carrier tone
-      UEF.add(2             ,4); // chunk length
-      UEF.add(1500          ,2); // chunk length
-
-      return UEF;
+      blockStart=blockEnd+1;
+      blockNumber++;
     }
 
-    let basic = fs.readFileSync('./tweet.bas','utf8');
-    let uef = makeUEF("TWEET", 0x1900, 0x1900, basic);
+    UEF.add(0x0110        ,2); // carrier tone
+    UEF.add(2             ,4); // chunk length
+    UEF.add(1500          ,2); // chunk length
 
-    fs.writeFileSync('./tweet.uef',new Uint8Array(uef));
+    return UEF;
+  }
+
+  let basic = [244,32,32,46,46,46,65,114,99,97,100,105,97,110,115,46,46,46,13,0,20,5,32,13,0,30,27,244,32,32,32,32,32,46,46,46,69,108,101,99,116,114,111,110,32,86,49,46,46,46,13,0,40,5,32,13,0,50,20,211,61,38,54,48,48,48,58,214,32,144,43,38,50,69,48,13,0,60,31,63,40,144,43,38,54,48,49,41,61,144,32,129,32,50,53,54,43,54,58,214,144,43,38,54,48,48,13,255,0,0,0,14,14,0,14,14,14,14,0,14,14,0,14,14,238,238,0,14,14,0,14,14,238,238,0,238,238,0,14,14,0,0,0,0,0,0,238,238,238,238,0,0,0,0,238,238,0,0,0,224,224,0,238,238,224,224,0,224,224,0,238,238,0,0,0,14,14,0,238,238,14,14,0,14,14,0,238,238,0,0,0,238,238,0,238,238,224,224,0,238,238,0,238,238,14,14,0,238,238,0,238,238,238,238,0,238,238,0,238,238,160,161,162,224,165,167,171,176,177,180,181,183,191,163,232,234,235,239,240,243,244,245,248,250,252,253,254,255,0,0,0,24,238,560,0,0,0,224,224,0,0,0,0,0,0,14,14,0,0,0,0,0,0,0,0,0,0,0,0,14,14,224,224,0,224,224,0,0,0,238,238,0,224,224,0,0,0,238,238,0,14,14,0,0,0,0,0,0,0,0,0,224,224,224,224,0,0,0,0,224,224,0,0,0,224,224,0,224,224,224,224,0,224,224,0,224,224,238,238,0,224,224,0,224,224,238,238,0,238,238,0,224,224,238,238,0,0,0,0,0,0,0,0,0,14,14,0,14,14,14,14,0,14,14,0,14,14,238,238,0,14,14,0,14,14,238,238,0,238,238,0,14,14,0,0,0,0,0,0,238,238,238,238,0,0,0,0,238,238,0,0,0,224,224,0,238,238,224,224,0,224,224,0,238,238,0,0,0,14,14,0,238,238,14,14,0,14,14,0,238,238,0,0,0,238,238,0,238,238,224,224,0,238,238,0,238,238,14,14,0,238,238,0,238,238,238,238,0,238,238,0,238,238,160,161,162,224,165,167,171,176,177,180,181,183,191,163,232,234,235,239,240,243,244,245,248,250,252,253,254,255,0,0,0,24,100,2137,0,22,24,20,0,24,24,24,7,14,20,0,14,9,22,24,24,7,0,26,27,9,0,24,24,24,24,24,24,0,0,23,27,10,27,5,6,27,15,12,13,17,10,27,13,16,10,15,27,9,15,10,27,8,6,4,15,27,27,27,0,27,13,13,13,27,13,0,14,12,16,10,27,0,0,0,15,10,0,15,10,27,24,26,4,15,12,27,23,10,6,27,25,7,27,27,27,27,10,27,27,27,0,27,0,3,27,25,26,10,27,7,3,24,15,21,0,23,10,27,6,25,0,15,10,16,27,10,18,0,16,27,19,19,19,19,8,27,0,0,0,27,0,26,11,0,15,10,6,27,27,5,2,17,27,12,1,27,0,16,21,15,10,0,17,10,17,27,27,4,17,27,27,27,4,27,0,0,0,27,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,13,0,0,0,0,0,0,0,0,169,104,141,0,1,141,3,1,169,133,141,1,1,141,4,1,162,113,142,7,1,142,2,1,232,142,5,1,169,108,141,6,116,938,1,32,0,1,0,165,113,56,233,40,133,113,165,114,233,0,133,114,160,99,177,113,24,101,113,133,129,200,177,113,101,114,133,130,162,0,161,129,24,101,113,129,129,230,129,208,2,230,130,161,129,101,114,129,129,200,192,125,208,216,240,26,208,0,226,0,233,0,39,1,62,1,73,1,82,1,0,0,0,0,0,0,0,0,0,0,0,0,165,113,56,233,224,133,113,165,114,233,1,133,114,162,0,134,112,160,255,169,129,32,244,255,224,1,208,33,198,112,160,0,162,7,169,23,32,238,255,152,74,74,74,9,224,32,238,255,177,113,32,238,255,200,202,16,247,192,224,208,227,165,113,24,105,224,133,113,144,2,230,114,169,22,32,238,255,169,7,32,238,255,32,156,1,23,0,10,32,0,0,0,0,0,0,234,169,145,133,118,32,72,1,36,112,48,62,32,156,1,28,13,13,25,10,12,10,135,141,65,114,99,97,100,105,97,110,115,140,146,135,141,65,114,99,97,100,105,97,110,115,28,9,23,31,20,135,13,10,8,148,135,13,10,8,148,135,8,8,10,148,28,10,38,53234,96,32,156,1,28,13,12,25,10,12,26,31,15,11,65,114,99,97,100,105,97,110,115,234,32,156,1,28,10,22,30,20,12,234,96,32,81,1,32,231,255,32,231,255,32,87,1,32,231,255,160,28,162,38,36,112,48,13,165,118,32,238,255,169,154,32,238,255,24,144,5,169,32,32,238,255,177,113,36,112,48,9,132,115,168,177,113,164,115,208,2,9,224,32,238,255,200,192,255,240,15,202,208,228,36,112,16,5,169,32,32,238,255,24,144,192,230,118,96,104,133,116,104,133,117,230,116,208,2,230,117,160,0,177,116,201,234,240,6,32,238,255,24,144,236,108,116,0,115,116,97,114,116,43,102,108,97,103,32,139,231,115,116,97,114,116,63,49,60,62,38,70,70,32,245,115,116,97,114,116,61,115,116,97,114,116,43,52,43,169,36,40,115,116,97,114,116,43,52,41,58,253,115,116,97,114,116,63,49,62,38,55,70,58,115,116,97,114,116,61,115,116,97,114,116,43,50,13,3,122,27,255,34,76,46,34,43,102,105,108,101,36,43,34,32,34,43,195,126,115,116,85,1633,132,25,108,101,110,103,116,104,61,162,35,40,142,102,105,108,101,36,41,58,217,35,48,13,3,142,17,61,115,116,97,114,116,43,108,101,110,103,116,104,13,3,152,5,32,13,3,162,41,244,32,83,111,102,116,32,67,104,97,114,97,99,116,101,114,115,32,102,111,114,32,69,108,101,99,116,114,111,110,32,66,97,110,110,101,114,13,3,172,41,220,32,38,48,48,44,38,48,48,44,32,38,48,48,44,32,38,48,48,44,38,48,48,44,32,38,48,48,44,32,38,48,48,44,38,48,48,13,3,182,41,220,32,38,69,48,44,38,69,48,44,32,38,48,48,32,44,38,48,48,44,38,48,48,44,32,38,48,48,32,44,38,48,48,44,38,48,48,13,3,192,41,220,32,38,48,69,44,38,48,69,44,32,38,48,48,32,44,38,48,48,44,38,48,48,44,32,38,48,48,32,44,38,48,48,44,38,48,48,13,3,202,41,220,32,38,48,48,44,38,48,48,44,32,38,48,48,32,44,38,48,48,44,38,48,48,44,32,38,48,48,32,44,38,48,69,44,38,48,69,13,124,166162,0,134,142,160,37,145,142,160,47,145,142,24,105,1,160,50,145,142,160,60,145,142,169,67,133,142,138,41,15,168,189,83,19,81,142,157,0,4,97,142,157,83,19,189,83,20,81,142,157,0,5,225,142,157,83,20,232,208,223,76,0,4,40,67,41,65,99,111,114,110,115,111,102,116,32,76,116,100,129,194,139,65,195,144,82,154,140,143,102,132,72,238,96,196,44,15,222,190,76,19,63,99,83,164,159,217,216,78,84,236,44,237,221,67,206,154,112,232,211,234,199,56,17,72,84,64,45,234,25,100,206,159,118,203,192,191,101,84,254,187,84,61,210,147,4,97,213,149,162,70,83,219,157,88,32,79,68,118,133,189,43,89,6,207,247,206,222,144,100,17,129,201,213,40,6,71,9,46,154,79,223,145,218,238,235,58,222,32,140,102,8,205,45,145,223,205,115,224,61,145,172,250,41,79,84,3,45,234,136,196,218,35,106,106,218,111,227,208,165,233,209,192,96,198,143,228,198,39,247,201,83,44,157,39,69,45,6,7,64,42,71,38,110,111,219,145,83,172,98,28,165,221,189230,143,68,197,191,123,235,215,234,195,214,199,108,162,159,136,188,73,9,67,75,119,195,143,109,227,208,141,177,118,225,141,225,214,199,217,135,244,197,131,127,207,139,165,246,249,152,42,206,212,67,67,219,137,78,87,106,14,60,208,87,84,96,211,147,63,232,83,74,223,158,125,194,154,118,229,234,164,109,133,190,43,132,196,191,112,6,19,63,101,84,250,187,84,191,208,225,41,97,226,149,215,218,163,147,70,205,218,96,116,103,24,251,57,129,67,174,133,206,115,235,214,240,145,108,229,147,120,95,176,169,97,166,114,158,117,167,166,127,240,163,252,198,36,99,184,182,51,103,239,134,113,135,134,107,240,191,221,100,177,171,43,228,211,106,195,235,192,198,102,241,144,201,197,225,156,219,217,129,195,111,18,204,102,210,224,113,189,76,117,174,56,180,139,56,195,106,62,153,140,36,72,69,16,48,85,50,26,118,31,61,46,98,219,96,246,30,198,116,164,60,229,20,224,147,210,167,18,75,3,62,134,3,154,139,148,112]
+  basic = String.fromCharCode.apply(null,basic);
+  let uef = makeUEF("ARCADIANS", 0x0E00, 0x8023, basic);
+
+  fs.writeFileSync('./test.uef',new Uint8Array(uef));
