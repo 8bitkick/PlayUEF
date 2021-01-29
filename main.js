@@ -17,13 +17,14 @@ var PlayUEF = function() {
 
   // Get URL parameters
   var url = new URL(location.href);
-  var BAUD  = url.searchParams.get("BAUD") || 1200;
+  var BAUD  = url.searchParams.get("BAUD") || 1225;
   var FILE  = url.searchParams.get("FILE") || "tapes/Arcadians_E.zip"; // Loads Electron Arcadians locally by default
   var TURBO = url.searchParams.get("TURBO") || 0;
   var PHASE = url.searchParams.get("PHASE") || 180;
   var LOCAL = url.searchParams.get("LOCAL") || false;
   var CARRIER = url.searchParams.get("CARRIER") || 2; // Carrier tone length factor * 2
   var STOPBIT = url.searchParams.get("STOPBIT") || 4; // Stop bit cycles * 2
+  var DATA     = url.searchParams.get("DATA") || false;
   var SAMPLE_RATE  = 44100;
   var WIDTH = window.innerWidth;
   var TITLE;
@@ -98,8 +99,17 @@ var PlayUEF = function() {
     player(converted.wav, converted.uef, uef.name, BAUD, SAMPLE_RATE, TEXTFILE);
   }
 
+   if (DATA) {
+     let uef = DATA.replace(/-/g, '+').replace(/_/g, '/');
+     uef = new Uint8Array(atob(uef).split("").map(l => l.charCodeAt()));
+     document.getElementById("status").innerHTML = "CONVERTING";
+     var converted = uef2wave(uef, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER);
+     player(converted.wav, converted.uef, "TWEET", BAUD, SAMPLE_RATE, TEXTFILE);
+
+   } else {
     // Kick-off player with local or downloaded UEF file
     (LOCAL=="true") ? loadLocal(startPlayer) : download(FILE,startPlayer);
+  }
 }
 
 window.onload=function(){

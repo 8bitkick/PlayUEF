@@ -167,7 +167,7 @@ function cassette(length, position, title, baud, version) {
   ctx.font="10px Arial";
 
   ctx.fillText("PlayUEF version "+version,200,72);
-  ctx.fillText(baud,340,115);
+  ctx.fillText("1200",340,115);
   ctx.fillText("baud",340,130);
 
 
@@ -209,7 +209,7 @@ function cassette(length, position, title, baud, version) {
   ctx.font="20px Arial";
   ctx.textAlign = 'left';
   ctx.fillStyle = '#000000';
-  ctx.fillText("8bitkick.cc",35,185);
+  ctx.fillText("bbcmicrobot.com",35,185);
 
   // markers
   ctx.strokeStyle="rgba(200,200,200, 0.2)";
