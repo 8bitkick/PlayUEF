@@ -24,6 +24,7 @@ var PlayUEF = function() {
   var LOCAL = url.searchParams.get("LOCAL") || false;
   var CARRIER = url.searchParams.get("CARRIER") || 2; // Carrier tone length factor * 2
   var STOPBIT = url.searchParams.get("STOPBIT") || 4; // Stop bit cycles * 2
+  var ONEBIT = url.searchParams.get("ONEBIT")/100 || 1; // Stop bit cycles * 2
   var DATA     = url.searchParams.get("DATA") || false;
   var SAMPLE_RATE  = 48000;
   var WIDTH = window.innerWidth;
@@ -33,7 +34,7 @@ var PlayUEF = function() {
 
   PHASE = PHASE*(Math.PI/180);
   CARRIER=CARRIER/2;
-  if (TURBO==1) {STOPBIT=1; CARRIER=0;}
+  if (TURBO==1) {STOPBIT=1; CARRIER=0; BAUD = 1280}
 
   // Downlooad UEF
   function download(FILE, cb){
@@ -95,7 +96,7 @@ var PlayUEF = function() {
   function startPlayer(uef){
     var uef = handleZip(uef);
     document.getElementById("status").innerHTML = "CONVERTING";
-    var converted = uef2wave(uef.file, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER);
+    var converted = uef2wave(uef.file, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER, ONEBIT);
     player(converted.wav, converted.uef, uef.name, BAUD, SAMPLE_RATE, TEXTFILE);
   }
 
@@ -103,7 +104,7 @@ var PlayUEF = function() {
      let uef = DATA.replace(/-/g, '+').replace(/_/g, '/');
      uef = new Uint8Array(atob(uef).split("").map(l => l.charCodeAt()));
      document.getElementById("status").innerHTML = "CONVERTING";
-     var converted = uef2wave(uef, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER);
+     var converted = uef2wave(uef, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER, ONEBIT);
      player(converted.wav, converted.uef, "TWEET", BAUD, SAMPLE_RATE, TEXTFILE);
 
    } else {

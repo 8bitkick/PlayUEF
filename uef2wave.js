@@ -9,8 +9,28 @@
 // http://electrem.emuunlim.com/UEFSpecs.htm
 //
 
-function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
+function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, oneBitFactor){
   "use strict";
+
+  // Create 16-bit array of a sine wave for given frequency, cycles and phase
+  function generateTone (frequency, cycles, phase, sampleRate) {
+    var samples = Math.floor((sampleRate / frequency)*cycles);
+    var array = new Int16Array(samples);
+    for (var i = 0 ; i < samples ; i++) {
+      array[i] = Math.floor(Math.sin(phase+((i / sampleRate) * (frequency * 2 * Math.PI))) * 0x7fff);
+    }
+    return array;
+  }
+
+  // Create mini-samples of audio bit encoding
+  const bit0    = generateTone(baud,1,phase, sampleRate);
+  const bit1    = generateTone(baud*2*oneBitFactor,2,phase, sampleRate);
+  const carrier = generateTone(baud*2,2,phase, sampleRate);
+  const stopbit = generateTone(baud*2,stopPulses/2,phase, sampleRate);
+  const highwave= generateTone(baud*2,1,phase, sampleRate);
+
+  const minCarrier = (90 / 1000) / (carrier.length / sampleRate);
+  console.log(minCarrier)
 
   var isValidUEF = function() {return ((String.fromCharCode.apply(null,uefData.slice(0, 9)) == "UEF File!"));}
 
@@ -138,21 +158,6 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
 
 
   function createWAV (uefChunks) {
-    // Create 16-bit array of a sine wave for given frequency, cycles and phase
-    function generateTone (frequency, cycles, phase, sampleRate) {
-      var samples = Math.floor((sampleRate / frequency)*cycles);
-      var array = new Int16Array(samples);
-      for (var i = 0 ; i < samples ; i++) {
-        array[i] = Math.floor(Math.sin(phase+((i / sampleRate) * (frequency * 2 * Math.PI))) * 0x7fff);
-      }
-      return array;
-    }
-
-    // Create mini-samples of audio bit encoding
-    var bit0    = generateTone(baud,1,phase, sampleRate);
-    var bit1    = generateTone(baud*2,2,phase, sampleRate);
-    var stopbit = generateTone(baud*2,stopPulses/2,phase, sampleRate);
-    var highwave= generateTone(baud*2,1,phase, sampleRate);
 
     // Write array to audio buffer
     var writeSample = function(array) {
@@ -209,9 +214,9 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor){
       }
     }
 
-    // Write carrier tone using '1' bits
+    // Write carrier tone
     var writeTone = function(chunk) {
-      for (var i = 0; i < (chunk.cycles); i++) {writeSample(bit1);}
+      for (var i = 0; i < (chunk.cycles); i++) {writeSample(carrier);}
     }
 
     // Gap advances sample position pointer, assumes array is zero filled
