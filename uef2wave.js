@@ -23,8 +23,9 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
   }
 
   // Create mini-samples of audio bit encoding
+
   const bit0    = generateTone(baud,1,phase, sampleRate);
-  const bit1    = generateTone(baud*2*oneBitFactor,2,phase, sampleRate);
+  const bit1    = generateTone(baud*2*oneBitFactor,2/oneBitFactor,phase, sampleRate);
   const carrier = generateTone(baud*2,2,phase, sampleRate);
   const stopbit = generateTone(baud*2,stopPulses/2,phase, sampleRate);
   const highwave= generateTone(baud*2,1,phase, sampleRate);
