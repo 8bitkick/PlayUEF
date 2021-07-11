@@ -13,25 +13,23 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
   "use strict";
 
   // Create 16-bit array of a sine wave for given frequency, cycles and phase
-  function generateTone (frequency, cycles, phase, sampleRate) {
+  function generateTone (label, frequency, cycles, phase, sampleRate) {
     var samples = Math.floor((sampleRate / frequency)*cycles);
     var array = new Int16Array(samples);
     for (var i = 0 ; i < samples ; i++) {
       array[i] = Math.floor(Math.sin(phase+((i / sampleRate) * (frequency * 2 * Math.PI))) * 0x7fff);
     }
+    let info = label+": "+Math.floor(1000000*array.length/sampleRate)+"us ("+cycles+" pulses at "+frequency+"Hz)";
+    if (label !==null) console.log(info);
     return array;
   }
 
   // Create mini-samples of audio bit encoding
-
-  const bit0    = generateTone(baud,1,phase, sampleRate);
-  const bit1    = generateTone(baud*2*oneBitFactor,2/oneBitFactor,phase, sampleRate);
-  const carrier = generateTone(baud*2,2,phase, sampleRate);
-  const stopbit = generateTone(baud*2,stopPulses/2,phase, sampleRate);
-  const highwave= generateTone(baud*2,1,phase, sampleRate);
-
-  const minCarrier = (90 / 1000) / (carrier.length / sampleRate);
-  console.log(minCarrier)
+  const carrier = generateTone("carrier", baud*2,2,phase, sampleRate);
+  const bit0    = generateTone("bit0   ", baud,1,phase, sampleRate);
+  const bit1    = generateTone("bit1   ", baud*2*oneBitFactor,2,phase, sampleRate);
+  const stopbit = generateTone("stopbit", baud*2,stopPulses/2,phase, sampleRate);
+  const highwave= generateTone(null, baud*2,1,phase, sampleRate);
 
   var isValidUEF = function() {return ((String.fromCharCode.apply(null,uefData.slice(0, 9)) == "UEF File!"));}
 
