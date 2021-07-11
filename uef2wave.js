@@ -114,7 +114,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
     // Adjust carrier tone accoring to parameter
     function carrierAdjust(cycles){
       if (carrierFactor==0) {
-        return (blockNumber>0) ? cycles : 60; // minimal interblock
+        return (blockNumber>0) ? (12000 / carrier.length) : cycles; // minimal interblock
       }
       else {
         return cycles * carrierFactor;
