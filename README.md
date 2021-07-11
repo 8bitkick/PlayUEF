@@ -58,8 +58,8 @@ URL parameters
   * `STOPBIT=4` Works on BBC Micro Issue 3. (Default)
 
 * `ONEBIT=<int>` Frequency of 1 bits = base frequency * ONEBIT / 100. Effects 0x0100 chunks only.
-  * `STOPBIT=100` 100% = 2400Hz default at 1200 base frequency
-  * `STOPBIT=200` 200% = 4800Hz at 1200 base frequency
+  * `ONEBIT=100` 100% = 2400Hz default at 1200 base frequency
+  * `ONEBIT=200` 200% = 4800Hz at 1200 base frequency
 
 * `TURBO=1` Equivalent to CARRIER=0&STOPBIT=1
 
