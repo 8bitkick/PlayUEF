@@ -1,5 +1,5 @@
 # PlayUEF
-PlayUEF is a javascript player for UEF format Acorn Electron and BBC Micro cassette games. Conversion from UEF to 44.1KHz WAV is done in the web browser.
+PlayUEF is a javascript player for UEF format Acorn Electron and BBC Micro cassette games. Conversion from UEF to 48KHz WAV is done in the web browser.
 
 Just connect your computer's cassette port to the headphone socket on a laptop or smartphone and you're ready to load games!
 
