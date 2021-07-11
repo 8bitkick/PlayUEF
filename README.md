@@ -42,7 +42,7 @@ URL parameters
 
 * `LOCAL=true` Prompt user to select local file
 
-* `BAUD=<int>` Change base frequency. Defaults to Acorn standard 1200 Hz.
+* `BAUD=<int>` Change base frequency (not really baud...). Defaults to Acorn standard 1200 Hz.
   * e.g. `BAUD=1400` works comfortably on my Acorn Electron and BBC Micro issue 7
 
 * `PHASE=<int>` Change sine phase. Defaults to Acorn standard 180 degrees.
@@ -57,13 +57,16 @@ URL parameters
   * `STOPBIT=3` Works on BBC Micro Issue 7
   * `STOPBIT=4` Works on BBC Micro Issue 3. (Default)
 
+* `ONEBIT=<int>` Frequency of 1 bits = base frequency * ONEBIT / 100. Effects 0x0100 chunks only.
+  * `STOPBIT=100` 100% = 2400Hz default at 1200 base frequency
+  * `STOPBIT=200` 200% = 4800Hz at 1200 base frequency
 
 * `TURBO=1` Equivalent to CARRIER=0&STOPBIT=1
 
 
 Faster Loading
 --------------
-Converting to 44.1KHz digital audio means loading can be faster than tape (due to hardware limits on the Electron's cassette interface only about 35% faster so far).
+Converting to digital audio means loading can be faster than tape (due to hardware limits on the Electron's cassette interface only about 35% faster so far).
 
 Loading times for Acorn Electron Arcadians (YMMV)
 
@@ -110,4 +113,4 @@ http://localhost:8000/test.html generates links to the STH UEF archive.
 
 Thanks
 ------
-Thanks to Thomas Harte for the UEF spec and Wouter Hobers for uef2wave.py, BigEd, Commie_User, DavidB, Vanekp of the [stardot forum](http://stardot.org.uk) for suggestions and Matt Godbolt for the awesome [JSbeeb](https://github.com/mattgodbolt/jsbeeb). Not forgetting Arcadian and the archive of over 1000 games at the [STH archive](http://www.stairwaytohell.com/electron/uefarchive/) which make this project come to life.
+Thanks to Thomas Harte for the UEF spec and Wouter Hobers for uef2wave.py, BigEd, Commie_User, DavidB, Vanekp of the [stardot forum](http://stardot.org.uk) for suggestions and Matt Godbolt for the awesome [JSbeeb](https://github.com/mattgodbolt/jsbeeb). Thanks to Chris Evans for the idea off ONEBIT. Not forgetting Arcadian and the archive of over 1000 games at the [STH archive](http://www.stairwaytohell.com/electron/uefarchive/) which make this project come to life.
