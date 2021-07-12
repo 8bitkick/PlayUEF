@@ -17,20 +17,22 @@ var PlayUEF = function() {
 
   // Get URL parameters
   var url = new URL(location.href);
-  var BAUD  = url.searchParams.get("BAUD") || 1200;
+  var BAUD  = url.searchParams.get("BAUD") || 1200; // frequency for zeros
   var FILE  = url.searchParams.get("FILE") || "tapes/Arcadians_E.zip"; // Loads Electron Arcadians locally by default
   var TURBO = url.searchParams.get("TURBO") || 0;
   var PHASE = url.searchParams.get("PHASE") || 180;
   var LOCAL = url.searchParams.get("LOCAL") || false;
   var CARRIER = url.searchParams.get("CARRIER") || 2; // Carrier tone length factor * 2
   var STOPBIT = url.searchParams.get("STOPBIT") || 4; // Stop bit cycles * 2
-  var ONEBIT = url.searchParams.get("ONEBIT")/100 || 1; // Stop bit cycles * 2
+  var HIGH = url.searchParams.get("HIGH") || BAUD*2; // frequency for ones
   var DATA     = url.searchParams.get("DATA") || false;
   var SAMPLE_RATE  = 48000;
   var WIDTH = window.innerWidth;
   var TITLE;
   var TEXTFILE = "";
   var UEFNAME = "";
+
+  console.log("Phase: "+PHASE, "High: "+HIGH)
 
   PHASE = PHASE*(Math.PI/180);
   CARRIER=CARRIER/2;
@@ -96,7 +98,7 @@ var PlayUEF = function() {
   function startPlayer(uef){
     var uef = handleZip(uef);
     document.getElementById("status").innerHTML = "CONVERTING";
-    var converted = uef2wave(uef.file, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER, ONEBIT);
+    var converted = uef2wave(uef.file, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER, HIGH);
     player(converted.wav, converted.uef, uef.name, BAUD, SAMPLE_RATE, TEXTFILE);
   }
 
@@ -104,7 +106,7 @@ var PlayUEF = function() {
      let uef = DATA.replace(/-/g, '+').replace(/_/g, '/');
      uef = new Uint8Array(atob(uef).split("").map(l => l.charCodeAt()));
      document.getElementById("status").innerHTML = "CONVERTING";
-     var converted = uef2wave(uef, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER, ONEBIT);
+     var converted = uef2wave(uef, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER, HIGH);
      player(converted.wav, converted.uef, "TWEET", BAUD, SAMPLE_RATE, TEXTFILE);
 
    } else {

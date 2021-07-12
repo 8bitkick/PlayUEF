@@ -9,9 +9,8 @@
 // http://electrem.emuunlim.com/UEFSpecs.htm
 //
 
-function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, oneBitFactor){
+function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, highBitFreq){
   "use strict";
-
   // Create 16-bit array of a sine wave for given frequency, cycles and phase
   function generateTone (label, frequency, cycles, phase, sampleRate) {
     var samples = Math.floor((sampleRate / frequency)*cycles);
@@ -27,8 +26,8 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
   // Create mini-samples of audio bit encoding
   const carrier = generateTone("carrier", baud*2,2,phase, sampleRate);
   const bit0    = generateTone("bit0   ", baud,1,phase, sampleRate);
-  const bit1    = generateTone("bit1   ", baud*2*oneBitFactor,2,phase, sampleRate);
-  const stopbit = generateTone("stopbit", baud*2,stopPulses/2,phase, sampleRate);
+  const bit1    = generateTone("bit1   ", highBitFreq,2,phase, sampleRate);
+  //const stopbit = generateTone("stopbit", baud*2,stopPulses/2,phase, sampleRate);
   const highwave= generateTone(null, baud*2,1,phase, sampleRate);
 
   var isValidUEF = function() {return ((String.fromCharCode.apply(null,uefData.slice(0, 9)) == "UEF File!"));}
@@ -178,7 +177,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
         var byte = chunk.data[i];
         writeSample(bit0);
         for (var b = 0; b < 8; b++) {var bit = byte & 1; writeBit(bit); byte = byte >>1;}
-        writeSample(stopbit);
+        writeSample(bit1);
       }
     }
 
