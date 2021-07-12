@@ -31,7 +31,7 @@ var PlayUEF = function() {
   var TITLE;
   var TEXTFILE = "";
   var UEFNAME = "";
-  var BAUD = Math.floor((parseInt(LOW)+parseInt(HIGH))/2);
+  var BAUD = Math.floor((parseInt(LOW)+parseInt(HIGH)/2)/2);
 
   console.log("Phase: "+PHASE, "High: "+HIGH)
 
