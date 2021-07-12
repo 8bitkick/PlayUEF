@@ -7,7 +7,7 @@
 // Loads cassette-based games to Acorn Electron and BBC micro
 //
 
-var VERSION = "1.0 beta 3";
+var VERSION = "1.1";
 
 var updateStatus = function(status) { document.getElementById("status").innerHTML = status; };
 var handleError = function(message, exception) { document.getElementById("spinner").style.borderLeft = "1.1em solid #FF0000";updateStatus("ERROR: "+message);throw exception;};
@@ -31,6 +31,7 @@ var PlayUEF = function() {
   var TITLE;
   var TEXTFILE = "";
   var UEFNAME = "";
+  var BAUD = Math.floor((parseInt(LOW)+parseInt(HIGH))/2);
 
   console.log("Phase: "+PHASE, "High: "+HIGH)
 
@@ -99,7 +100,7 @@ var PlayUEF = function() {
     var uef = handleZip(uef);
     document.getElementById("status").innerHTML = "CONVERTING";
     var converted = uef2wave(uef.file, LOW, SAMPLE_RATE, STOPBIT, PHASE, CARRIER, HIGH);
-    player(converted.wav, converted.uef, uef.name, LOW, SAMPLE_RATE, TEXTFILE);
+    player(converted.wav, converted.uef, uef.name, BAUD, SAMPLE_RATE, TEXTFILE);
   }
 
    if (DATA) {
@@ -107,7 +108,7 @@ var PlayUEF = function() {
      uef = new Uint8Array(atob(uef).split("").map(l => l.charCodeAt()));
      document.getElementById("status").innerHTML = "CONVERTING";
      var converted = uef2wave(uef, LOW, SAMPLE_RATE, STOPBIT, PHASE, CARRIER, HIGH);
-     player(converted.wav, converted.uef, "TWEET", LOW, SAMPLE_RATE, TEXTFILE);
+     player(converted.wav, converted.uef, "TWEET",BAUD, SAMPLE_RATE, TEXTFILE);
 
    } else {
     // Kick-off player with local or downloaded UEF file
