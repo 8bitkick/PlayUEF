@@ -17,14 +17,14 @@ var PlayUEF = function() {
 
   // Get URL parameters
   var url = new URL(location.href);
-  var BAUD  = url.searchParams.get("BAUD") || 1200; // frequency for zeros
+  var LOW  = url.searchParams.get("LOW") || 1200; // frequency for zeros
   var FILE  = url.searchParams.get("FILE") || "tapes/Arcadians_E.zip"; // Loads Electron Arcadians locally by default
   var TURBO = url.searchParams.get("TURBO") || 0;
   var PHASE = url.searchParams.get("PHASE") || 180;
   var LOCAL = url.searchParams.get("LOCAL") || false;
   var CARRIER = url.searchParams.get("CARRIER") || 2; // Carrier tone length factor * 2
   var STOPBIT = url.searchParams.get("STOPBIT") || 4; // Stop bit cycles * 2
-  var HIGH = url.searchParams.get("HIGH") || BAUD*2; // frequency for ones
+  var HIGH = url.searchParams.get("HIGH") || LOW*2; // frequency for ones
   var DATA     = url.searchParams.get("DATA") || false;
   var SAMPLE_RATE  = 48000;
   var WIDTH = window.innerWidth;
@@ -36,7 +36,7 @@ var PlayUEF = function() {
 
   PHASE = PHASE*(Math.PI/180);
   CARRIER=CARRIER/2;
-  if (TURBO==1) {STOPBIT=1; CARRIER=0; BAUD = 1280}
+  if (TURBO==1) {STOPBIT=1; CARRIER=0; LOW = 1280}
 
   // Downlooad UEF
   function download(FILE, cb){
@@ -98,16 +98,16 @@ var PlayUEF = function() {
   function startPlayer(uef){
     var uef = handleZip(uef);
     document.getElementById("status").innerHTML = "CONVERTING";
-    var converted = uef2wave(uef.file, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER, HIGH);
-    player(converted.wav, converted.uef, uef.name, BAUD, SAMPLE_RATE, TEXTFILE);
+    var converted = uef2wave(uef.file, LOW, SAMPLE_RATE, STOPBIT, PHASE, CARRIER, HIGH);
+    player(converted.wav, converted.uef, uef.name, LOW, SAMPLE_RATE, TEXTFILE);
   }
 
    if (DATA) {
      let uef = DATA.replace(/-/g, '+').replace(/_/g, '/');
      uef = new Uint8Array(atob(uef).split("").map(l => l.charCodeAt()));
      document.getElementById("status").innerHTML = "CONVERTING";
-     var converted = uef2wave(uef, BAUD, SAMPLE_RATE, STOPBIT, PHASE, CARRIER, HIGH);
-     player(converted.wav, converted.uef, "TWEET", BAUD, SAMPLE_RATE, TEXTFILE);
+     var converted = uef2wave(uef, LOW, SAMPLE_RATE, STOPBIT, PHASE, CARRIER, HIGH);
+     player(converted.wav, converted.uef, "TWEET", LOW, SAMPLE_RATE, TEXTFILE);
 
    } else {
     // Kick-off player with local or downloaded UEF file
