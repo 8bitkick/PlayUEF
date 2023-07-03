@@ -10,7 +10,10 @@
 // Cassette & console interface
 // -----------------------------
 
-function player(wavfile, chunks, UEFNAME, BAUD, SAMPLE_RATE, TEXTFILE) {
+import cassette from './cassette';
+
+export function player(wavfile, chunks, UEFNAME, BAUD, SAMPLE_RATE, TEXTFILE) {
+  var VERSION = "1.3";
   var warning = "";
   var player = document.getElementById('audio');
   var fps = 30;
@@ -119,18 +122,10 @@ function player(wavfile, chunks, UEFNAME, BAUD, SAMPLE_RATE, TEXTFILE) {
     // Swap loader for cassette in web page
     document.getElementById('container').innerHTML = '<canvas id="cassette" height="260px" width="400px"></canvas>';
 
-    // Set up listener for WAV save on clicking casssette
-
-    document.getElementById("cassette").addEventListener('click',function ()
-    {
-      if (confirm("Want to download WAV of "+wavname+"?")) {
-        saveAs(blob, wavname+'.wav')
-      } else {
-        // Do nothing
-      }
-    });
 
     // Start animations
     resize();
     draw();
   }
+
+  export default player;

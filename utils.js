@@ -1,24 +1,29 @@
-wordAt = function(array,position){
+
+
+export function updateStatus (status) { document.getElementById("status").innerHTML = status; };
+export function handleError (message, exception) { document.getElementById("spinner").style.borderLeft = "1.1em solid #FF0000";updateStatus("ERROR: "+message);throw exception;};
+
+export function wordAt (array,position){
   var bytes = array.slice(position, position+2);
   return new Uint16Array(bytes.buffer)[0];
 }
 
-doubleAt = function(array,position){
+export function doubleAt (array,position){
   var bytes = array.slice(position, position+4);
   return new Uint32Array(bytes.buffer)[0];
 }
 
-floatAt = function(array,position){
+export function floatAt (array,position){
   var bytes = array.slice(position, position+4);
   return new Float32Array(bytes.buffer)[0];
 }
 
-var hex = function (value) {return ("00000000" + value.toString(16)).substr(-8);}
-var hex4 = function (value) {return ("0000" + value.toString(16)).substr(-4);}
-var chr = function (value) {return (String.fromCharCode(value));}
+export function hex (value) {return ("00000000" + value.toString(16)).substr(-8);}
+export function hex4(value) {return ("0000" + value.toString(16)).substr(-4);}
+export function chr (value) {return (String.fromCharCode(value));}
 
 // Create WAV header for audio buffer
-buildWAVheader = function(waveBuffer, sampleLength, sampleRate) {
+export function buildWAVheader(waveBuffer, sampleLength, sampleRate) {
   var numFrames = sampleLength;
   var numChannels = 1;
   var bytesPerSample = 2;

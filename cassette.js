@@ -10,7 +10,7 @@
 // Cassette
 // --------
 
-function cassette(length, position, title, baud, version) {
+export function cassette(length, position, title, baud, version) {
   var pi = Math.PI;
   function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
     //x+=radius;y+=radius;
@@ -272,3 +272,5 @@ function cassette(length, position, title, baud, version) {
   screw(400-14,260-14);
 
 };
+
+export default cassette;

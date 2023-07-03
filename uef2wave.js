@@ -8,8 +8,11 @@
 //
 // http://electrem.emuunlim.com/UEFSpecs.htm
 //
+import { chr,hex,wordAt,doubleAt,floatAt,hex4,buildWAVheader } from './utils.js';
+import { handleError, updateStatus } from './utils.js';
 
-function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, highBitFreq){
+
+async function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, highBitFreq){
   "use strict";
   // Create 16-bit array of a sine wave for given frequency, cycles and phase
   function generateTone (label, frequency, cycles, phase, sampleRate) {
@@ -30,18 +33,20 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
   //const stopbit = generateTone("stopbit", baud*2,stopPulses/2,phase, sampleRate);
   const highwave= generateTone(null, baud*2,1,phase, sampleRate);
 
-  var isValidUEF = function() {return ((String.fromCharCode.apply(null,uefData.slice(0, 9)) == "UEF File!"));}
-
-  // check if the UEF is in fact zipped
-  if (isValidUEF()==false) {
-    try{
-      var gunzip = new Zlib.Gunzip(uefData);
-      uefData = gunzip.decompress();
-    }
-    catch(e) {handleError("Invalid UEF/ZIP file<BR>",e);}
-  }
-
-  if (isValidUEF()==false) {handleError("Invalid UEF file",0);}
+  // var isValidUEF = function() {return ((String.fromCharCode.apply(null,uefData.slice(0, 9)) == "UEF File!"));}
+  //
+  // // check if the UEF is in fact zipped
+  // if (isValidUEF()==false) {
+  //   try {
+  //       // Load the ZIP file asynchronously
+  //       uefData = await zip.loadAsync(uefData);
+  //       console.log('Valid ZIP file');
+  //     } catch (e) {
+  //     {handleError("Invalid UEF/ZIP file<BR>",e);}
+  //     }
+  //   };
+  //
+  // if (isValidUEF()==false) {handleError("Invalid UEF file",0);}
 
   // TODO - Variables passed to decode and WAV creation
   var uefChunks      = [];
@@ -269,3 +274,5 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
     console.timeEnd('Create WAV');
     return {wav:wavfile, uef:uefChunks};
   };
+
+export default uef2wave;

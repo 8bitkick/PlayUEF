@@ -1,35 +1,30 @@
 
 import 'bootstrap/dist/css/bootstrap.min.css';
-import React, { useEffect } from "react";
-//import "./PlayUEF.css";
+import React, { useParams, useEffect } from "react";
+import { useLocation } from 'react-router-dom';
+import main from './main.js';
 
 function PlayUEFwrap() {
+  const { search } = useLocation();
+  const urlParams = new URLSearchParams(search);
+  const LOW = urlParams.get("LOW");
+  const FILE = urlParams.get("FILE");
+  const TURBO = urlParams.get("TURBO");
+  const PHASE = urlParams.get("PHASE");
+  const LOCAL = urlParams.get("LOCAL");
+  const CARRIER = urlParams.get("CARRIER");
+  const STOPBIT = urlParams.get("STOPBIT");
+  const HIGH = urlParams.get("HIGH");
+  const DATA = urlParams.get("DATA");
+
+  // Rest of your component code...
+
+  // Call the main function with the URL parameters
   useEffect(() => {
-    const scripts = [
-      "lib/jsunzip.js",
-      "lib/jszip.min.js",
-      "lib/filesave.min.js",
-      "lib/utils.js",
-      "uef2wave.js",
-      "cassette.js",
-      "player.js",
-      "main.js",
-    ];
+    main(LOW, FILE, TURBO, PHASE, LOCAL, CARRIER, STOPBIT, HIGH, DATA);
+  }, [LOW, FILE, TURBO, PHASE, LOCAL, CARRIER, STOPBIT, HIGH, DATA]);
 
-    const scriptElements = scripts.map((src) => {
-      const script = document.createElement("script");
-      script.src = "./"+src;
-      script.async = true;
-      document.body.appendChild(script);
-      return script;
-    });
 
-    return () => {
-      scriptElements.forEach((scriptElement) => {
-        document.body.removeChild(scriptElement);
-      });
-    };
-  }, []);
 
   return (
     <div>
