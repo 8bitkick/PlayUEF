@@ -13,6 +13,11 @@ function PlayUEFwrap() {
   const [UEF, setUEF] = useState('');
   const location = useLocation();
   const urlParams = new URLSearchParams(location.search);
+  const SAMPLE_RATE = urlParams.get("SAMPLE_RATE") || 48000
+  const LOW       = urlParams.get("LOW") || 1200;
+  const HIGH      = urlParams.get("HIGH") || LOW * 2;
+  const BAUD      = urlParams.get("BAUD") || Math.floor((parseInt(LOW) + parseInt(HIGH)) / 2 / 2);
+
 
   useEffect(() => {
     const FILE      = urlParams.get("FILE") || require('./tapes/Arcadians_E.zip');
@@ -24,16 +29,12 @@ function PlayUEFwrap() {
 
   const downloadUEF = async (FILE) => {
     try {
-      const SAMPLE_RATE = urlParams.get("SAMPLE_RATE") || 48000
-      const LOW       = urlParams.get("LOW") || 1200;
       const TURBO     = urlParams.get("TURBO") || 0;
       const PHASE     = (urlParams.get("PHASE") || 180)*(Math.PI/180);
       const LOCAL     = urlParams.get("LOCAL") || false;
       const CARRIER   = (urlParams.get("CARRIER") || 2)/2;
       const STOPBIT   = urlParams.get("STOPBIT") || 4;
-      const HIGH      = urlParams.get("HIGH") || LOW * 2;
       const DATA      = urlParams.get("DATA") || false;
-      const BAUD      = urlParams.get("BAUD") || Math.floor((parseInt(LOW) + parseInt(HIGH)) / 2 / 2);
 
       if (TURBO==1) {STOPBIT=1; CARRIER=0; LOW = 1280}
       // Use appropriate method (e.g., fetch) to download the UEF file
@@ -56,8 +57,8 @@ function PlayUEFwrap() {
   return (
     <div>
     {wavFile && <ThreeComponent />}
-    
-          {wavFile && <Player src={wavFile} uef={UEF} />}
+
+    {wavFile && <Player src={wavFile} uef={UEF} baud={BAUD} sampleRate={SAMPLE_RATE}/>}
 
     </div>
   );
