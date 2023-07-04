@@ -4,6 +4,7 @@ import React, { useParams,  useState, useEffect } from "react";
 import { useLocation } from 'react-router-dom';
 import uef2wave from './uef2wave';
 import { handleZip } from './utils.js';
+import ThreeComponent from './ThreeComponent';
 
 function PlayUEFwrap() {
 
@@ -51,6 +52,7 @@ setWavFile(url);
 
   return (
     <div>
+    {wavFile && <ThreeComponent />}
       {wavFile && <audio src={wavFile} controls />}
     </div>
   );
