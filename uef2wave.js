@@ -10,6 +10,7 @@
 //
 import { chr,hex,wordAt,doubleAt,floatAt,hex4,buildWAVheader } from './utils.js';
 import { handleError, updateStatus } from './utils.js';
+import pako from 'pako';
 
 
 async function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, highBitFreq){
@@ -33,20 +34,18 @@ async function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFa
   //const stopbit = generateTone("stopbit", baud*2,stopPulses/2,phase, sampleRate);
   const highwave= generateTone(null, baud*2,1,phase, sampleRate);
 
-  // var isValidUEF = function() {return ((String.fromCharCode.apply(null,uefData.slice(0, 9)) == "UEF File!"));}
-  //
-  // // check if the UEF is in fact zipped
-  // if (isValidUEF()==false) {
-  //   try {
-  //       // Load the ZIP file asynchronously
-  //       uefData = await zip.loadAsync(uefData);
-  //       console.log('Valid ZIP file');
-  //     } catch (e) {
-  //     {handleError("Invalid UEF/ZIP file<BR>",e);}
-  //     }
-  //   };
-  //
-  // if (isValidUEF()==false) {handleError("Invalid UEF file",0);}
+  var isValidUEF = function() {return ((String.fromCharCode.apply(null,uefData.slice(0, 9)) == "UEF File!"));}
+
+  // check if the UEF is in fact zipped
+  if (isValidUEF() == false) {
+      try {
+          uefData = pako.inflate(uefData, { to: 'Array' });
+      } catch (e) {
+          handleError("Invalid UEF/ZIP file<BR>", e);
+      }
+  };
+
+  if (isValidUEF()==false) {handleError("Invalid UEF file",0);}
 
   // TODO - Variables passed to decode and WAV creation
   var uefChunks      = [];
@@ -58,6 +57,7 @@ async function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFa
 
   function decodeUEF(uefData){
     function decodeChunk(UEFchunk) {
+      console.log("Chunk",UEFchunk)
       switch (UEFchunk.id){
 
         case 0x0000: // originInformation
@@ -265,9 +265,10 @@ async function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFa
       console.log((Math.floor(10*samplePos/sampleRate)/10)+"s WAV audio at "+baud+" baud");
       return new Uint8Array(buildWAVheader(waveBuffer, samplePos, sampleRate));
     }
-
+    console.log(uefData)
     console.time('Decode UEF');
     var uefChunks = decodeUEF(uefData);
+
     console.timeEnd('Decode UEF');
     console.time('Create WAV');
     var wavfile = createWAV(uefChunks);

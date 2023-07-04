@@ -13,7 +13,7 @@ import JSZip from 'jszip';
 
 export function main(LOW, FILE, TURBO, PHASE, LOCAL, CARRIER, STOPBIT, HIGH, DATA, SAMPLE_RATE = 48000, WIDTH = window.innerWidth, TITLE, TEXTFILE, UEFNAME, BAUD) {
   LOW = LOW || 1200;
-  FILE = FILE || "tapes/Arcadians_E.zip";
+  FILE = FILE || "./tapes/Arcadians_E.zip";
   TURBO = TURBO || 0;
   PHASE = PHASE || 180;
   LOCAL = LOCAL || false;
@@ -29,21 +29,39 @@ export function main(LOW, FILE, TURBO, PHASE, LOCAL, CARRIER, STOPBIT, HIGH, DAT
   CARRIER=CARRIER/2;
   if (TURBO==1) {STOPBIT=1; CARRIER=0; LOW = 1280}
 
-  // Downlooad UEF
-  function download(FILE, cb){
-    updateStatus("DOWNLOADING<BR>"+FILE.split("/").pop());
-    var xhttp = new XMLHttpRequest();
-    xhttp.open("GET", FILE, true);
-    xhttp.responseType = "arraybuffer";
-    xhttp.onerror = function (err) {return null};
-    xhttp.onload = function (e) {
-      if (xhttp.status == 200) {
-        cb({file: new Uint8Array(xhttp.response), name: FILE});
-      }
-      else{handleError(xhttp.status+"<br>"+FILE,0);}
+  // Download UEF
+  async function download(FILE, cb) {
+    updateStatus("DOWNLOADING<BR>" + FILE.split("/").pop());
+
+    try {
+      const response = await fetch(FILE);
+      const blobData = await response.blob();
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const binaryData = event.target.result;
+        console.log('Binary data:', binaryData);
+        cb({ file: new Uint8Array(binaryData), name: FILE });
+      };
+      reader.readAsArrayBuffer(blobData);
+    } catch (error) {
+      console.error(error);
+      // Handle error case
     }
-    xhttp.send(null);
   }
+
+    // var xhttp = new XMLHttpRequest();
+    // xhttp.open("GET", FILE, true);
+    // xhttp.responseType = "arraybuffer";
+    // xhttp.onerror = function (err) {return null};
+    // xhttp.onload = function (e) {
+    //   if (xhttp.status == 200) {
+    //     cb({file: new Uint8Array(xhttp.response), name: FILE});
+    //   }
+    //   else{handleError(xhttp.status+"<br>"+FILE,0);}
+    // }
+    // xhttp.send(null);
+  // }
 
   // Get local UEF
   function loadLocal(cb){
@@ -61,33 +79,7 @@ export function main(LOW, FILE, TURBO, PHASE, LOCAL, CARRIER, STOPBIT, HIGH, DAT
     document.addEventListener("change", fileLoadEvent, false);
   }
 
-  // Handle zipped files (containing one UEF and TXT notes, as standard on STH)
-  async function handleZip(input) {
-      var filedata = input.file;
-      var filename = input.name;
-      console.log(filename);
-      if (filename.split(".").pop().toLowerCase() == "zip") {
-          try {
-              var files = {};
-              var zip = new JSZip();
-              var contents = await zip.loadAsync(filedata);
-              var filenames = Object.keys(contents.files);
-              // iterate through files in the zip
-              for (var i = 0; i < filenames.length; i++) {
-                  document.getElementById("status").innerHTML = "UNZIPPING";
-                  console.log("Decompressing... ",filenames[i]);
-                  files[filenames[i]] = await zip.file(filenames[i]).async('uint8array');
-                  var extension = filenames[i].split(".").pop().toLowerCase();
-                  if (extension=="uef") {var fileToPlay = i;filename = filenames[i]} // Only one Uef per zip handled for now
-                  if (extension=="txt") {TEXTFILE = String.fromCharCode.apply(null, files[filenames[i]]).replace(/\n/g, "<br />");};
-                  filedata = files[filenames[fileToPlay]];
-              }
-          } catch(e) {
-              handleError("trying to unzip<br>"+filename,e);
-          }
-      }
-      return {file:filedata, name:filename};
-  }
+
 
 
   async function startPlayer(uef){

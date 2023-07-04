@@ -1,7 +1,38 @@
 
+import JSZip from 'jszip';
 
 export function updateStatus (status) { document.getElementById("status").innerHTML = status; };
-export function handleError (message, exception) { document.getElementById("spinner").style.borderLeft = "1.1em solid #FF0000";updateStatus("ERROR: "+message);throw exception;};
+export function handleError (message, exception) {
+  console.error(message,exception)
+  //document.getElementById("spinner").style.borderLeft = "1.1em solid #FF0000";updateStatus("ERROR: "+message);throw exception;}
+};
+
+// Handle zipped files (containing one UEF and TXT notes, as standard on STH)
+export async function handleZip(filedata, filename) {
+    let textfile;
+    console.log(filedata);
+    if (filename.split(".").pop().toLowerCase() == "zip") {
+        // try {
+            var files = {};
+            var zip = new JSZip();
+            var contents = await zip.loadAsync(filedata);
+            var filenames = Object.keys(contents.files);
+            // iterate through files in the zip
+            for (var i = 0; i < filenames.length; i++) {
+                console.log("Decompressing... ",filenames[i]);
+                files[filenames[i]] = await zip.file(filenames[i]).async('uint8array');
+                var extension = filenames[i].split(".").pop().toLowerCase();
+                if (extension=="uef") {var fileToPlay = i;filename = filenames[i]} // Only one Uef per zip handled for now
+                if (extension=="txt") {textfile = String.fromCharCode.apply(null, files[filenames[i]]).replace(/\n/g, "<br />");};
+                filedata = files[filenames[fileToPlay]];
+        //     }
+        // } catch(e) {
+        //     handleError("trying to unzip<br>"+filename,e,filedata);
+       }
+    }
+    return {data:filedata, name:filename};
+}
+
 
 export function wordAt (array,position){
   var bytes = array.slice(position, position+2);
