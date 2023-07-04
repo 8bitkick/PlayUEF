@@ -57,7 +57,6 @@ async function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFa
 
   function decodeUEF(uefData){
     function decodeChunk(UEFchunk) {
-      console.log("Chunk",UEFchunk)
       switch (UEFchunk.id){
 
         case 0x0000: // originInformation
@@ -265,7 +264,7 @@ async function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFa
       console.log((Math.floor(10*samplePos/sampleRate)/10)+"s WAV audio at "+baud+" baud");
       return new Uint8Array(buildWAVheader(waveBuffer, samplePos, sampleRate));
     }
-    console.log(uefData)
+
     console.time('Decode UEF');
     var uefChunks = decodeUEF(uefData);
 

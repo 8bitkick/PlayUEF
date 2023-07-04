@@ -6,7 +6,7 @@ import uef2wave from './uef2wave';
 import { handleZip } from './utils.js';
 
 function PlayUEFwrap() {
-  const [audioFileUrl, setAudioFileUrl] = useState('');
+
   const [wavFile, setWavFile] = useState('');
   const location = useLocation();
   const urlParams = new URLSearchParams(location.search);
@@ -39,9 +39,11 @@ function PlayUEFwrap() {
         let uef = await handleZip(fileData, FILE);
 
         // Call the `uef2wave` function to convert UEF to WAV
-        const wavFile = await uef2wave(Array.from(uef.data), LOW, SAMPLE_RATE, STOPBIT, PHASE, CARRIER, HIGH);
-        console.log(wavFile)
-        setAudioFileUrl(wavFile);
+        const output = await uef2wave(Array.from(uef.data), LOW, SAMPLE_RATE, STOPBIT, PHASE, CARRIER, HIGH);
+        const blob = new Blob([output.wav], { type: 'audio/wav' });
+        const url = window.URL.createObjectURL(blob);
+setWavFile(url);
+
       } catch (error) {
         console.error('Error converting UEF to WAV:', error);
       }
@@ -49,7 +51,7 @@ function PlayUEFwrap() {
 
   return (
     <div>
-
+      {wavFile && <audio src={wavFile} controls />}
     </div>
   );
 }
