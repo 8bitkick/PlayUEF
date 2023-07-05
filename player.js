@@ -39,7 +39,7 @@ const Player = ({ src, uef, baud, sampleRate }) => {
   }
 
   function chunkAtTime(currentTime, chunks, baud, sampleRate){
-  var bytesPerSample = (baud/sampleRate)/10; // # tape bytes transmitted per WAV sample, assuming 10 bit packets
+  var bytesPerSample = (baud/sampleRate)/8; // # tape bytes transmitted per WAV sample, assuming 10 bit packets
 
     var samplepos = currentTime * sampleRate;
     let thischunk = binarySearch(chunks,samplepos);
@@ -48,12 +48,12 @@ const Player = ({ src, uef, baud, sampleRate }) => {
     switch (chunks[thischunk].type){
       case "dataBlock":
       var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
-      var str = chunks[thischunk].datastr.slice(delta & 0xfe00,delta);
+      var str = chunks[thischunk].datastr.slice(delta & 0xfe00,delta)+"◼";
       return {'str': str, 'header': chunks[thischunk].header, 'color':  "#00aa00"}
 
       case "definedDataBlock":
       var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
-      var str = chunks[thischunk].datastr.slice(delta & 0xfe00,delta);
+      var str = chunks[thischunk].datastr.slice(delta & 0xfe00,delta)+"◼";
       return {'str': str, 'header': chunks[thischunk].header, 'color':  "#00aaaa"}
 
       // Clear console for integerGap
