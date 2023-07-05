@@ -17,7 +17,13 @@ function PlayUEFwrap() {
   const LOW       = urlParams.get("LOW") || 1200;
   const HIGH      = urlParams.get("HIGH") || LOW * 2;
   const BAUD      = urlParams.get("BAUD") || Math.floor((parseInt(LOW) + parseInt(HIGH)) / 2 / 2);
-
+  const TURBO     = urlParams.get("TURBO") || 0;
+  const PHASE     = (urlParams.get("PHASE") || 180)*(Math.PI/180);
+  const LOCAL     = urlParams.get("LOCAL") || false;
+  const CARRIER   = (urlParams.get("CARRIER") || 2)/2;
+  const STOPBIT   = urlParams.get("STOPBIT") || 4;
+  const DATA      = urlParams.get("DATA") || false;
+  //    if (TURBO==1) {STOPBIT=1; CARRIER=0; LOW = 1280}
 
   useEffect(() => {
     const FILE      = urlParams.get("FILE") || require('./tapes/Arcadians_E.zip');
@@ -26,17 +32,8 @@ function PlayUEFwrap() {
     }
   }, []);
 
-
   const downloadUEF = async (FILE) => {
     try {
-      const TURBO     = urlParams.get("TURBO") || 0;
-      const PHASE     = (urlParams.get("PHASE") || 180)*(Math.PI/180);
-      const LOCAL     = urlParams.get("LOCAL") || false;
-      const CARRIER   = (urlParams.get("CARRIER") || 2)/2;
-      const STOPBIT   = urlParams.get("STOPBIT") || 4;
-      const DATA      = urlParams.get("DATA") || false;
-
-      if (TURBO==1) {STOPBIT=1; CARRIER=0; LOW = 1280}
       // Use appropriate method (e.g., fetch) to download the UEF file
       const fileData = await fetch(FILE).then((response) => response.arrayBuffer());
 
@@ -57,49 +54,8 @@ function PlayUEFwrap() {
   return (
     <div>
     {wavFile && <ThreeComponent />}
-
     {wavFile && <Player src={wavFile} uef={UEF} baud={BAUD} sampleRate={SAMPLE_RATE}/>}
-
     </div>
   );
 }
-
-
-// <div>
-//  <AudioPlayer wavFile={audioFileUrl} />
-// </div>
-//   // Rest of your component code...
-//
-//   // Call the main function with the URL parameters
-//   useEffect(() => {
-//     main(LOW, FILE, TURBO, PHASE, LOCAL, CARRIER, STOPBIT, HIGH, DATA);
-//   }, [LOW, FILE, TURBO, PHASE, LOCAL, CARRIER, STOPBIT, HIGH, DATA]);
-//
-//
-//
-//   return (
-//     <div>
-//       <div id="container">
-//         <div className="loader" id="spinner"></div>
-//         <div id="status"></div>
-//       </div>
-//       <audio controls id="audio" autoPlay={false}>
-//         Your browser does not support the &lt;audio&gt; tag.
-//         <source id="source" src="" type="audio/wav" />
-//       </audio>
-//       <div id="header"></div>
-//       <div id="console"></div>
-//       <div id="footer">
-//         <span
-//           className="btn"
-//           id="more"
-//           onClick={() => window.location.href = 'http://www.8bitkick.cc/playuef.html'}
-//         >
-//           More cassettes
-//         </span>
-//       </div>
-//     </div>
-//   );
-// }
-
 export default PlayUEFwrap;

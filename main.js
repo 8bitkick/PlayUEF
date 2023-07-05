@@ -15,9 +15,9 @@ export function main(LOW, FILE, TURBO, PHASE, LOCAL, CARRIER, STOPBIT, HIGH, DAT
   LOW = LOW || 1200;
   FILE = FILE || "./tapes/Arcadians_E.zip";
   TURBO = TURBO || 0;
-  PHASE = PHASE || 180;
+  PHASE = (PHASE || 180) *(Math.PI/180);
   LOCAL = LOCAL || false;
-  CARRIER = CARRIER || 2;
+  CARRIER = (CARRIER || 2)/2;
   STOPBIT = STOPBIT || 4;
   HIGH = HIGH || LOW * 2;
   DATA = DATA || false;
@@ -25,9 +25,7 @@ export function main(LOW, FILE, TURBO, PHASE, LOCAL, CARRIER, STOPBIT, HIGH, DAT
 
   console.log("Phase: "+PHASE, "High: "+HIGH)
 
-  PHASE = PHASE*(Math.PI/180);
-  CARRIER=CARRIER/2;
-  if (TURBO==1) {STOPBIT=1; CARRIER=0; LOW = 1280}
+  //if (TURBO==1) {STOPBIT=1; CARRIER=0; LOW = 1280}
 
   // Download UEF
   async function download(FILE, cb) {

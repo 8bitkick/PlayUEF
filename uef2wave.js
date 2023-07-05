@@ -245,7 +245,7 @@ async function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFa
     var waveBuffer    = new ArrayBuffer(44 + (estLength*2)); // Header is 44 bytes, sample is 16-bit * sampleLength
     var sampleData    = new Int16Array(waveBuffer, 44, estLength);
     var samplePos     = 0;
-    var re = /[^\x20-\xff]/g;
+
     // Parse all chunk objects and write WAV
     for (var i = 0; i < numChunks; i++) {
       var chunk = uefChunks[i];
@@ -254,9 +254,11 @@ async function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFa
 
       // Array to string for console display
       if (uefChunks[i].data != null){
-
-        var str = String.fromCharCode.apply(null,uefChunks[i].data);//
-          uefChunks[i].datastr = str.replace(re, ".");
+        // for (let n=0; n<uefChunks[i].data.length;n++){
+        //   if (uefChunks[i].data[n]<128) {uefChunks[i].data[n]|=0x100}; //OR with 0x100 if under 128
+        // }
+          uefChunks[i].datastr= String.fromCharCode.apply(null,uefChunks[i].data);//
+          console.log(uefChunks[i].datastr)
         }
 
       }

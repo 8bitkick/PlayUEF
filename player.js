@@ -4,6 +4,9 @@ const Player = ({ src, uef, baud, sampleRate }) => {
   const audioRef = useRef();
   const [currentTime, setCurrentTime] = useState(0);
   const [currentText, setCurrentText] = useState("");
+  const [currentHeader, setCurrentHeader] = useState("");
+  const samplesPerCycle = sampleRate / baud;
+
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -14,11 +17,12 @@ const Player = ({ src, uef, baud, sampleRate }) => {
     const relevantText = chunkAtTime(audio.currentTime, uef, baud, sampleRate);// uef.find(({timestamp}) => Math.floor(audio.currentTime) === Math.floor(timestamp));
     if(relevantText){
       setCurrentText(relevantText.str);
+      setCurrentHeader(relevantText.header);
     }
   };
 
   function binarySearch(array, key) {
-    var samplesPerCycle = sampleRate / baud;
+
     var lo = 0, hi = array.length - 1, mid, element;
     while (lo <= hi) {
       mid = ((lo + hi) >> 1);
@@ -35,7 +39,6 @@ const Player = ({ src, uef, baud, sampleRate }) => {
   }
 
   function chunkAtTime(currentTime, chunks, baud, sampleRate){
-
   var bytesPerSample = (baud/sampleRate)/10; // # tape bytes transmitted per WAV sample, assuming 10 bit packets
 
     var samplepos = currentTime * sampleRate;
@@ -45,12 +48,12 @@ const Player = ({ src, uef, baud, sampleRate }) => {
     switch (chunks[thischunk].type){
       case "dataBlock":
       var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
-      var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(delta & 0xfe00,delta));
+      var str = chunks[thischunk].datastr.slice(delta & 0xfe00,delta);
       return {'str': str, 'header': chunks[thischunk].header, 'color':  "#00aa00"}
 
       case "definedDataBlock":
       var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
-      var str = String.fromCharCode.apply(null,chunks[thischunk].data.slice(delta & 0xfe00,delta));
+      var str = chunks[thischunk].datastr.slice(delta & 0xfe00,delta);
       return {'str': str, 'header': chunks[thischunk].header, 'color':  "#00aaaa"}
 
       // Clear console for integerGap
@@ -73,8 +76,8 @@ const Player = ({ src, uef, baud, sampleRate }) => {
   return (
     <>
       <audio ref={audioRef} src={src} controls style={{ width: '100%', height: '64px' }}/>
-      <p>Current Time: {currentTime.toFixed(2)} seconds</p>
-      <p>Relevant Text: {currentText}</p>
+      <h2>{currentHeader}</h2>
+      <pre>{currentText}</pre>
     </>
   );
 };
