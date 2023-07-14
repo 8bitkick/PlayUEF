@@ -13,7 +13,7 @@ function PlayUEFwrap() {
   const [UEF, setUEF] = useState('');
   const location = useLocation();
   const urlParams = new URLSearchParams(location.search);
-  const SAMPLE_RATE = urlParams.get("SAMPLE_RATE") || 48000
+  const SAMPLE_RATE = urlParams.get("SAMPLE_RATE") || 44100
   const LOW       = urlParams.get("LOW") || 1200;
   const HIGH      = urlParams.get("HIGH") || LOW * 2;
   const BAUD      = urlParams.get("BAUD") || Math.floor((parseInt(LOW) + parseInt(HIGH)) / 2 / 2);
