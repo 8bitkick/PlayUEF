@@ -85,3 +85,48 @@ export function buildWAVheader(waveBuffer, sampleLength, sampleRate) {
 
   return waveBuffer;
 }
+
+export function binarySearch(array, key, samplesPerCycle) {
+  var lo = 0, hi = array.length - 1, mid, element;
+  while (lo <= hi) {
+    mid = ((lo + hi) >> 1);
+    element = array[mid];
+    if ((element.timestamp+(element.cycles*samplesPerCycle)) < key) {
+      lo = mid + 1;
+    } else if (element.timestamp > key) {
+      hi = mid - 1;
+    } else {
+      return mid;
+    }
+  }
+  return -1;
+}
+
+export function chunkAtTime(currentTime, chunks, baud, sampleRate){
+
+var bytesPerSample = (baud/sampleRate)/8; // # tape bytes transmitted per WAV sample, assuming 10 bit packets
+  const samplesPerCycle = sampleRate / baud;
+  var samplepos = currentTime * sampleRate;
+  let thischunk = binarySearch(chunks,samplepos,samplesPerCycle);
+  console.log(currentTime, thischunk, baud, sampleRate)
+  // For UEF data chunks display contents in the console in 'real time'
+  switch (chunks[thischunk].type){
+    case "dataBlock":
+    var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
+    var str = chunks[thischunk].datastr.slice(delta & 0xfe00,delta)+"◼";
+    return {'str': str, 'header': chunks[thischunk].header, 'color':  "#00aa00"}
+
+    case "definedDataBlock":
+    var delta = Math.floor((samplepos-chunks[thischunk].timestamp)*bytesPerSample); // how much data to display
+    var str = chunks[thischunk].datastr.slice(delta & 0xfe00,delta)+"◼";
+    return {'str': str, 'header': chunks[thischunk].header, 'color':  "#00aaaa"}
+
+    // Clear console for integerGap
+    case "integerGap":
+    return {'str': "", 'header': "", 'color':  "#000000"}
+
+    // Bright green for carrierTone, it just looks cooler
+    case "carrierTone":
+    return {'str': "", 'header': "", 'color':  "#00ff22"}
+  }
+}
