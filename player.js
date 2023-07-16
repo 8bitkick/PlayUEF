@@ -6,14 +6,29 @@ const Player = ({ src, uef, baud, sampleRate }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [currentText, setCurrentText] = useState("");
   const [currentHeader, setCurrentHeader] = useState("");
+  const [totalLength, setTotalLength] = useState(0);
+  const [playerState, setPlayerState] = useState("");
   const samplesPerCycle = sampleRate / baud;
+
 
 
   useEffect(() => {
     const audio = audioRef.current;
 
+    const checkPlayerState = () => {
+      if (audio.paused && currentTime > 0 && currentTime < totalLength) {
+        setPlayerState('paused');
+      } else if (audio.paused && currentTime === 0) {
+        setPlayerState('stopped');
+      } else if (!audio.paused) {
+        setPlayerState('playing');
+      }
+      console.log(playerState)
+    };
+
     const updateTime = () => {
     setCurrentTime(audio.currentTime);
+    checkPlayerState();
 
     const relevantText = chunkAtTime(audio.currentTime, uef, baud, sampleRate);// uef.find(({timestamp}) => Math.floor(audio.currentTime) === Math.floor(timestamp));
     if(relevantText){
@@ -77,7 +92,11 @@ const Player = ({ src, uef, baud, sampleRate }) => {
   return (
 
     <>
-    <ThreeComponent currentTime={currentTime}/>
+    <ThreeComponent
+      currentTime={currentTime}
+      totalLength={totalLength}
+      playerState={playerState}
+    />
       <audio ref={audioRef} src={src} controls style={{ width: '100%', height: '64px' }}/>
       <h2>{currentHeader}</h2>
       <pre>{currentText}</pre>
