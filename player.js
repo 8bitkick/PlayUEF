@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import ThreeComponent from './ThreeComponent';
 
 const Player = ({ src, uef, baud, sampleRate }) => {
   const audioRef = useRef();
@@ -74,10 +75,13 @@ const Player = ({ src, uef, baud, sampleRate }) => {
   }, []);
 
   return (
+
     <>
+    <ThreeComponent currentTime={currentTime}/>
       <audio ref={audioRef} src={src} controls style={{ width: '100%', height: '64px' }}/>
       <h2>{currentHeader}</h2>
       <pre>{currentText}</pre>
+
     </>
   );
 };
