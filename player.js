@@ -11,7 +11,7 @@ const Player = ({ src, uef, baud, sampleRate }) => {
   const [playerState, setPlayerState] = useState("");
 
   const checkPlayerState = () => {
-    if (audioRef.current.paused && currentTime > 0 && currentTime < totalLength) {
+    if (audioRef.current.paused) {
       setPlayerState('paused');
     } else if (audioRef.current.paused && currentTime === 0) {
       setPlayerState('stopped');
@@ -34,22 +34,14 @@ const Player = ({ src, uef, baud, sampleRate }) => {
       }
     };
 
-    const handlePause = () => {
-      checkPlayerState();
-    };
-
-    const handleEnded = () => {
-      checkPlayerState();
-    };
-
     audio.addEventListener('timeupdate', updateTime);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('pause', checkPlayerState);
+    audio.addEventListener('ended', checkPlayerState);
 
     return () => {
       audio.removeEventListener('timeupdate', updateTime);
-      audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('pause', checkPlayerState);
+      audio.removeEventListener('ended', checkPlayerState);
     };
   }, []);
 
@@ -61,8 +53,8 @@ const Player = ({ src, uef, baud, sampleRate }) => {
         playerState={playerState}
       />
       <audio ref={audioRef} src={src} controls style={{ width: '100%', height: '64px' }}/>
-      <h2>{currentHeader}</h2>
-      <pre>{currentText}</pre>
+      <h4>{currentHeader}</h4>
+      <pre style={{ overflowWrap: 'break-word' ,whiteSpace: 'pre-wrap',width: '100%', height: '320px' }}>{currentText} </pre>
     </>
   );
 };

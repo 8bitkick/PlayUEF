@@ -52,7 +52,7 @@ function PlayUEFwrap() {
 
   return (
     <div>
-    {wavFile && <Player src={wavFile} uef={UEF} baud={BAUD} sampleRate={SAMPLE_RATE}/>}
+    {wavFile && <Player src={wavFile} uef={UEF} baud={LOW} sampleRate={SAMPLE_RATE}/>}
     </div>
   );
 }
