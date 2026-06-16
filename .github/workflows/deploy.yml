@@ -17,13 +17,12 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Sync to S3
         run: |
-          # Sync all static assets with 1-day cache
-          aws s3 sync . s3://${{ vars.S3_BUCKET }} \
+          aws s3 sync . s3://${{ secrets.S3_BUCKET }} \
             --exclude ".git/*" \
             --exclude ".github/*" \
             --exclude "test/*" \
@@ -31,13 +30,12 @@ jobs:
             --delete \
             --cache-control "max-age=86400"
 
-          # Re-upload index.html with no-cache so users always get the latest
-          aws s3 cp index.html s3://${{ vars.S3_BUCKET }}/index.html \
+          aws s3 cp index.html s3://${{ secrets.S3_BUCKET }}/index.html \
             --cache-control "no-cache, no-store, must-revalidate" \
             --content-type "text/html"
 
       - name: Invalidate CloudFront cache
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id ${{ vars.CLOUDFRONT_DIST_ID }} \
+            --distribution-id ${{ secrets.CLOUDFRONT_DIST_ID }} \
             --paths "/*"
