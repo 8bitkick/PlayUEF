@@ -24,7 +24,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
   }
 
   // Create mini-samples of audio bit encoding
-  const carrier = generateTone("carrier", baud*2,2,phase, sampleRate);
+  const carrier = generateTone("carrier", baud*2,1,phase, sampleRate);
   const bit0    = generateTone("bit0   ", baud,1,phase, sampleRate);
   const bit1    = generateTone("bit1   ", highBitFreq,2,phase, sampleRate);
   //const stopbit = generateTone("stopbit", baud*2,stopPulses/2,phase, sampleRate);
@@ -60,9 +60,10 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
         console.log("UEF info: "+info);
         var match = info.match(/MakeUEF\D+(\d+)\.(\d+)/i);
         if (match) {
-          var version = match[1];
-          if (version < 3) {parityInvert = 1;
-            console.log("PlayUEF : MakeUEF v2.x or below - 0x0104 parity will be inverted");
+          var major = parseInt(match[1]);
+          var minor = parseInt(match[2]);
+          if (major < 2 || (major === 2 && minor < 4)) {parityInvert = 1;
+            console.log("PlayUEF : MakeUEF v" + major + "." + minor + " - 0x0104 parity will be inverted");
           }
         }
         break;
