@@ -7,7 +7,7 @@
 // Loads cassette-based games to Acorn Electron and BBC micro
 //
 
-var VERSION = "1.1";
+var VERSION = "1.3-beta";
 
 var updateStatus = function(status) { document.getElementById("status").innerHTML = status; };
 var handleError = function(message, exception) { document.getElementById("spinner").style.borderLeft = "1.1em solid #FF0000";updateStatus("ERROR: "+message);throw exception;};

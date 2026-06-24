@@ -79,26 +79,27 @@ Supported UEF chunks
 --------------------
 See the [UEF specification draft](/docs/UEFspecification.html) for more details.
 
-Fully implemented UEF chunks
-* `0x0100` Implicit start/stop bit tape data block
+PlayUEF reproduces every chunk MakeUEF V2.4 emits for BBC/Electron cassettes:
+
+* `0x0000` Origin / information (metadata)
+* `0x0100` Implicit start/stop bit tape data block (8N1)
+* `0x0104` Defined-format data block — any bit count, parity (`N`/`E`/`O`) and
+  stop bits, e.g. 8E1 / 8O1 (Firebird titles like AndroidAttack & Joust)
 * `0x0110` Carrier tone
-* `0x1111` Carrier tone with dummy byte at byte
+* `0x0111` Carrier tone with dummy byte
 * `0x0112` Integer gap
-* `0x0104` defined data block (for Acorn Atom and BBC titles like AndroidAttack & Joust)
-
-Approximated
-
-* `0x0116` - floating point gap is approximated to interger gap
-* `0x0114` - security cycles replaced with carrier tone
-
-Ignored
-* `0x0113` Change of base frequency
+* `0x0113` Change of base frequency — the tone set is rebuilt per section, so
+  PlayUEF tracks the original tape's per-file baud rather than a fixed 1200 Hz
+* `0x0114` Security cycles — rendered as the recorded high/low frequency wave
+  pattern (not substituted with carrier tone)
 * `0x0115` Phase change
+* `0x0116` Floating-point gap — exact `round(seconds × rate)` silence
 
-These seem to usually reflect mechanical variance of original cassette player behavior. As we just want to load game data rather than recreate archival quality audio, these are ignored.
+Honouring `0x0113`/`0x0115` (per-section baud and phase) pulled converted
+durations from ~7% off the original tape to within ~2.5%.
 
 To-do list
-* Test on Acorn Atom
+* 300-baud format (Acorn Atom) — currently only the 1200-baud scheme is supported
 
 Running locally
 ---------------
@@ -110,6 +111,25 @@ For development purposes you can up a local web server as below and navigate to 
     Serving HTTP on 0.0.0.0 port 8000 ...
 
 http://localhost:8000/test.html generates links to the STH UEF archive.
+
+Testing
+-------
+
+The conversion code is covered by a Node test suite that validates output against
+real-tape **CSW** captures held under `test/data/`:
+
+    $ npm test
+
+* **csw_test.js** — round-trip against the original cassette. Both the real-tape
+  CSW and the PlayUEF-generated WAV are decoded down to Acorn Cassette Filing
+  System blocks; every block recoverable from the tape with a valid CRC must be
+  reproduced byte-for-byte. A duration guard (5%) catches timing regressions.
+* **encode_test.js** — decodes every data block back out of the generated WAV
+  using its own serial format, covering 8N1 and all parity formats (8E1/8O1/…) —
+  ~3270 blocks across 19 tapes.
+* **test_carrier.js** — duration + pinned output-hash smoke test.
+
+See [test/README.md](/test/README.md) for details.
 
 Thanks
 ------

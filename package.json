@@ -1,0 +1,9 @@
+{
+  "name": "playuef",
+  "version": "1.0.0",
+  "description": "Web-based UEF to WAV conversion and player for Acorn Electron / BBC Micro cassette games",
+  "scripts": {
+    "test": "node test/csw_test.js && node test/encode_test.js && node test/test_carrier.js"
+  },
+  "license": "GPL-3.0"
+}

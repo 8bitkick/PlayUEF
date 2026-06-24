@@ -1,1 +1,8 @@
 .DS_Store
+
+# Test tape corpus — real-tape CSW/WAV/FLAC captures (~600MB), kept out of git.
+# Required to run `npm test`; obtain separately.
+test/data/
+
+# Stray generated audio artifacts in the test root
+test/*.wav

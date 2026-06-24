@@ -23,12 +23,21 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
     return array;
   }
 
-  // Create mini-samples of audio bit encoding
-  const carrier = generateTone("carrier", baud*2,1,phase, sampleRate);
-  const bit0    = generateTone("bit0   ", baud,1,phase, sampleRate);
-  const bit1    = generateTone("bit1   ", highBitFreq,2,phase, sampleRate);
-  //const stopbit = generateTone("stopbit", baud*2,stopPulses/2,phase, sampleRate);
-  const highwave= generateTone(null, baud*2,1,phase, sampleRate);
+  // Mini-samples of the audio bit encoding. These are rebuilt whenever a base
+  // frequency (0x0113) or phase (0x0115) change chunk is reached, so per-section
+  // baud rates and phase recorded from the original tape are reproduced.
+  const highRatio = highBitFreq / baud;   // '1' frequency relative to base (normally 2)
+  function buildTones (baseFreq, phaseVal, log) {
+    return {
+      carrier:  generateTone(log ? "carrier" : null, baseFreq * highRatio, 1, phaseVal, sampleRate),
+      bit0:     generateTone(log ? "bit0   " : null, baseFreq,             1, phaseVal, sampleRate),
+      bit1:     generateTone(log ? "bit1   " : null, baseFreq * highRatio, 2, phaseVal, sampleRate),
+      highwave: generateTone(null,                   baseFreq * highRatio, 1, phaseVal, sampleRate)
+    };
+  }
+  var tones       = buildTones(baud, phase, true);
+  var curBaseFreq = baud;
+  var curPhase    = phase;
 
   var isValidUEF = function() {return ((String.fromCharCode.apply(null,uefData.slice(0, 9)) == "UEF File!"));}
 
@@ -90,19 +99,38 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
         uefChunks.push({type:"integerGap", cycles:wordAt(UEFchunk.data,0)*2});
         break;
 
+        case 0x0113: // changeOfBaseFrequency - per-section baud rate from the tape
+        uefChunks.push({type:"baseFreq", cycles:0, freq:floatAt(UEFchunk.data,0)});
+        break;
+
+        case 0x0115: // phaseChange - waveform phase in degrees
+        uefChunks.push({type:"phaseChange", cycles:0, phase:wordAt(UEFchunk.data,0)*(Math.PI/180)});
+        break;
+
         case 0x0111: // carrierToneWithDummyByte
         uefChunks.push({type:"carrierTone", cycles:wordAt(UEFchunk.data,0)}); // before cycles
         uefChunks.push({type:"dataBlock",   data:[0xAA], cycles:10, header:""}); // Dummy Byte
         uefChunks.push({type:"carrierTone", cycles:wordAt(UEFchunk.data,2)}); // after byte
         break;
 
-        case 0x0114: // securityCycles - REPLACED WITH CARRIER TONE
-        uefChunks.push({type:"carrierTone", cycles:(doubleAt(UEFchunk.data,0) & 0x00ffffff)});
+        case 0x0114: // securityCycles - high/low frequency wave pattern
+        var secCycles = UEFchunk.data[0] | (UEFchunk.data[1]<<8) | (UEFchunk.data[2]<<16);
+        var secBits = [];                       // 1 = high (2400Hz) cycle, 0 = low (1200Hz) cycle
+        for (var sc = 0; sc < secCycles; sc++) {
+          var secByte = UEFchunk.data[5+(sc>>3)];
+          secBits.push((secByte >> (7-(sc&7))) & 1);
+        }
+        // first/last pulse: 'P' = leading/trailing half-cycle (single pulse), 'W' = whole cycle
+        uefChunks.push({type:"securityCycles", cycles:secCycles, bits:secBits,
+                        first:chr(UEFchunk.data[3]), last:chr(UEFchunk.data[4])});
         break;
 
-        case 0x0116: // floatingPointGap - APPROXIMATED
+        case 0x0116: // floatingPointGap - silence of the given duration in seconds
         blockNumber = 0;
-        uefChunks.push({type:"integerGap", cycles: carrierAdjust(Math.ceil(floatAt(UEFchunk.data,0) * baud))});
+        var gapSeconds = floatAt(UEFchunk.data,0);
+        uefChunks.push({type:"integerGap",
+                        samples: Math.round(gapSeconds * sampleRate),   // exact gap length
+                        cycles:  Math.ceil(gapSeconds * baud)});        // upper bound for buffer estimate
         break;
       }
     }
@@ -114,7 +142,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
     // Adjust carrier tone accoring to parameter
     function carrierAdjust(cycles){
       if (carrierFactor==0) {
-        return (blockNumber>0) ? (12000 / carrier.length) : cycles; // minimal interblock
+        return (blockNumber>0) ? (12000 / tones.carrier.length) : cycles; // minimal interblock
       }
       else {
         return cycles * carrierFactor;
@@ -168,7 +196,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
 
     // Write bit to audio buffer
     var writeBit = function (bit) {
-      (bit==0) ? writeSample(bit0) : writeSample(bit1);
+      (bit==0) ? writeSample(tones.bit0) : writeSample(tones.bit1);
     }
 
     // Standard BBC Micro / Acorn Electron 8N1 format data
@@ -176,9 +204,9 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
       var length = chunk.data.length;
       for (var i = 0; i < length; i++) {
         var byte = chunk.data[i];
-        writeSample(bit0);
+        writeSample(tones.bit0);
         for (var b = 0; b < 8; b++) {var bit = byte & 1; writeBit(bit); byte = byte >>1;}
-        writeSample(bit1);
+        writeSample(tones.bit1);
       }
     }
 
@@ -192,7 +220,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
         paritybit = (format.parity == "O") ? (paritybit&1)^1 : paritybit&1;
         paritybit ^= parityInvert;
       }
-      writeSample(bit0); // Write start bit 0
+      writeSample(tones.bit0); // Write start bit 0
       for (var b = 0; b < format.bits; b++) {
         var bit = byte & 1;
         writeBit(bit);
@@ -200,9 +228,9 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
       }
       if (format.parity !="N") {writeBit(paritybit);};
       for (var i = 0; i < format.stopBits; i++) {
-        writeSample(bit1);
+        writeSample(tones.bit1);
       }
-      if (format.extraWave==1) {writeSample(highwave);};
+      if (format.extraWave==1) {writeSample(tones.highwave);};
     }
 
     // Write defined format data byte
@@ -215,30 +243,61 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
 
     // Write carrier tone
     var writeTone = function(chunk) {
-      for (var i = 0; i < (chunk.cycles); i++) {writeSample(carrier);}
+      for (var i = 0; i < (chunk.cycles); i++) {writeSample(tones.carrier);}
     }
 
-    // Gap advances sample position pointer, assumes array is zero filled
-    var writeGap = function(chunk) {
-      samplePos+= samplesPerCycle * chunk.cycles;
+    // Write security cycles: the recorded pattern of high/low frequency waves.
+    // A '1' bit is one cycle at the high frequency, a '0' bit one cycle at the
+    // base frequency; a 'P' first/last marker makes that end a half-cycle pulse.
+    var writeSecurity = function(chunk) {
+      var n = chunk.bits.length;
+      for (var i = 0; i < n; i++) {
+        var high = chunk.bits[i] === 1;
+        var freq = high ? curBaseFreq*highRatio : curBaseFreq;
+        var halfPulse = (i === 0 && chunk.first === "P") || (i === n-1 && chunk.last === "P");
+        if (halfPulse) {
+          writeSample(generateTone(null, freq, 0.5, curPhase, sampleRate));
+        } else {
+          writeSample(high ? tones.carrier : tones.bit0);
+        }
+      }
     }
+
+    // Gap advances sample position pointer, assumes array is zero filled.
+    // Floating-point gaps (0x0116) carry an exact sample count; integer gaps
+    // (0x0112) are measured in base cycles.
+    var writeGap = function(chunk) {
+      samplePos += (chunk.samples != null) ? chunk.samples : samplesPerCycle * chunk.cycles;
+    }
+
+    // Base frequency / phase change: rebuild the tone set for following waves
+    var setBaseFreq = function(chunk) { curBaseFreq = chunk.freq;  tones = buildTones(curBaseFreq, curPhase); }
+    var setPhase    = function(chunk) { curPhase    = chunk.phase; tones = buildTones(curBaseFreq, curPhase); }
 
     // Define functions to apply to uefChunk tokens
     var functions = {
       integerGap:         writeGap,
       carrierTone:        writeTone,
       dataBlock:          writeStandardBlock,
-      definedDataBlock:   writeDefinedBlock
+      definedDataBlock:   writeDefinedBlock,
+      securityCycles:     writeSecurity,
+      baseFreq:           setBaseFreq,
+      phaseChange:        setPhase
     }
 
-    var uefCycles = 0
-    var numChunks = uefChunks.length;
+    var uefCycles   = 0
+    var numChunks   = uefChunks.length;
+    var minBaseFreq = baud;          // lowest base frequency => most samples per cycle
 
     for (var i = 0; i < numChunks; i++) {
       uefCycles += uefChunks[i].cycles;
+      if (uefChunks[i].type === "baseFreq" && uefChunks[i].freq < minBaseFreq) minBaseFreq = uefChunks[i].freq;
     }
 
-    var estLength     = uefCycles * samplesPerCycle; // Estimate WAV length from UEF decode
+    // Size the buffer for the worst case (lowest frequency); the WAV header is
+    // written from the actual samplePos, so over-allocation only costs memory.
+    var maxSamplesPerCycle = Math.ceil(sampleRate / minBaseFreq) + 2;
+    var estLength     = uefCycles * maxSamplesPerCycle; // Estimate WAV length from UEF decode
     var waveBuffer    = new ArrayBuffer(44 + (estLength*2)); // Header is 44 bytes, sample is 16-bit * sampleLength
     var sampleData    = new Int16Array(waveBuffer, 44, estLength);
     var samplePos     = 0;
