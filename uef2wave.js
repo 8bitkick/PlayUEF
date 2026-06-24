@@ -246,28 +246,51 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
       for (var i = 0; i < (chunk.cycles); i++) {writeSample(tones.carrier);}
     }
 
-    // Write security cycles: the recorded pattern of high/low frequency waves.
-    // A '1' bit is one cycle at the high frequency, a '0' bit one cycle at the
-    // base frequency; a 'P' first/last marker makes that end a half-cycle pulse.
+    // Write security cycles: the recorded high/low frequency wave pattern. A '1'
+    // bit is one cycle at the high frequency, a '0' bit one cycle at the base
+    // frequency; a 'P' first/last marker makes that end a half cycle. A half
+    // cycle is a 180 deg phase step, so within the region we track a running
+    // phase and advance every following wave by it — otherwise the half-pulse
+    // shares the next cycle's polarity and fuses with it, distorting the pattern.
+    //
+    // NB: the shift is deliberately *not* propagated past the region into the
+    // following carrier/data. Doing so (inverting the rest of the tape) is what a
+    // continuous analogue tape does, but MakeUEF's decoder is polarity-sensitive
+    // and fails to read inverted data — so the real reference tool round-trips
+    // this (region-local) form, not the globally-propagated one.
     var writeSecurity = function(chunk) {
       var n = chunk.bits.length;
+      var ph = curPhase;
       for (var i = 0; i < n; i++) {
         var high = chunk.bits[i] === 1;
         var freq = high ? curBaseFreq*highRatio : curBaseFreq;
         var halfPulse = (i === 0 && chunk.first === "P") || (i === n-1 && chunk.last === "P");
-        if (halfPulse) {
-          writeSample(generateTone(null, freq, 0.5, curPhase, sampleRate));
-        } else {
-          writeSample(high ? tones.carrier : tones.bit0);
-        }
+        var cycles = halfPulse ? 0.5 : 1;
+        writeSample(generateTone(null, freq, cycles, ph, sampleRate));
+        ph += cycles * 2 * Math.PI;
       }
     }
 
     // Gap advances sample position pointer, assumes array is zero filled.
     // Floating-point gaps (0x0116) carry an exact sample count; integer gaps
     // (0x0112) are measured in base cycles.
+    //
+    // The preceding tone's final half-cycle has no closing edge before the
+    // zero-filled silence, so a square-wave reader (and MakeUEF) sees that last
+    // half-pulse run straight into the gap as one over-long pulse — an odd
+    // half-pulse count that MakeUEF misreads as a spurious 1-cycle security wave
+    // (0x0114) at every carrier->gap boundary. A real tape never does this: its
+    // recording carries a transition at the boundary. So we terminate the last
+    // half-pulse with a single opposite-polarity sample (the gap keeps its exact
+    // total length), giving the reader a clean cycle count and an isolated gap.
     var writeGap = function(chunk) {
-      samplePos += (chunk.samples != null) ? chunk.samples : samplesPerCycle * chunk.cycles;
+      var n = (chunk.samples != null) ? chunk.samples : samplesPerCycle * chunk.cycles;
+      if (n > 0) {
+        var k = samplePos - 1;
+        while (k >= 0 && sampleData[k] === 0) k--;          // last non-silent sample
+        if (k >= 0) { sampleData[samplePos++] = (sampleData[k] > 0) ? -0x4000 : 0x4000; n--; }
+      }
+      samplePos += n;
     }
 
     // Base frequency / phase change: rebuild the tone set for following waves
