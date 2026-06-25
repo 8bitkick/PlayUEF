@@ -198,24 +198,6 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
       } samplePos+=length;
     }
 
-    // Bound a tone's first half-pulse against a preceding SILENT gap. A sine tone
-    // ramps up from zero, so a square-wave reader (and MakeUEF) folds that soft
-    // leading edge into the gap and mis-groups the boundary — e.g. it reads a
-    // carrier's first cycle as a spurious 1-cycle security wave, or drops/flips a
-    // security's first cycle. A real tape's gap signal supplies that edge; emit one
-    // sample of the OPPOSITE polarity to the first half-pulse to stand in for it,
-    // and keep it OUTSIDE the chunk's decodable span by advancing the recorded start
-    // past it — so it reads as the gap's trailing edge, not a tone half-pulse. Only
-    // when silence precedes: a tone already supplies the edge, and an extra one there
-    // would itself read as a stray cycle. firstPhase = phase at the half-pulse start.
-    var boundAfterSilence = function(chunk, firstPhase) {
-      if (samplePos > 0 && sampleData[samplePos - 1] === 0) {
-        var firstSign = Math.sin(firstPhase + Math.PI / 2) >= 0 ? 1 : -1;
-        sampleData[samplePos++] = (firstSign > 0) ? -0x4000 : 0x4000;
-        chunk.timestamp = samplePos;
-      }
-    }
-
     // Write bit to audio buffer
     var writeBit = function (bit) {
       (bit==0) ? writeSample(tones.bit0) : writeSample(tones.bit1);
@@ -265,7 +247,6 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
 
     // Write carrier tone
     var writeTone = function(chunk) {
-      boundAfterSilence(chunk, curPhase);    // carrier's first cycle starts at curPhase
       for (var i = 0; i < (chunk.cycles); i++) {writeSample(tones.carrier);}
     }
 
@@ -297,7 +278,6 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
       // zero crossing rather than ph + 180 deg, so a sub-sample phase offset can't
       // split it into a stray 1-sample pulse. A 'W' first cycle starts at ph.
       var pstart = leadP ? (Math.round(ph / Math.PI) * Math.PI - Math.PI) : ph;
-      boundAfterSilence(chunk, pstart);      // bound the first half-pulse vs a silent gap
       for (var i = 0; i < n; i++) {
         var longWave = chunk.bits[i] === 1;                  // 1 = long (low freq), 0 = short (high freq)
         var freq = longWave ? curBaseFreq : curBaseFreq*highRatio;
@@ -314,23 +294,9 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
 
     // Gap advances sample position pointer, assumes array is zero filled.
     // Floating-point gaps (0x0116) carry an exact sample count; integer gaps
-    // (0x0112) are measured in base cycles.
-    //
-    // The preceding tone's final half-cycle has no closing edge before the
-    // zero-filled silence, so a square-wave reader (and MakeUEF) sees that last
-    // half-pulse run straight into the gap as one over-long pulse — an odd
-    // half-pulse count that MakeUEF misreads as a spurious 1-cycle security wave
-    // (0x0114) at every carrier->gap boundary. A real tape never does this: its
-    // recording carries a transition at the boundary. So we terminate the last
-    // half-pulse with a single opposite-polarity sample (the gap keeps its exact
-    // total length), giving the reader a clean cycle count and an isolated gap.
+    // (0x0112) are measured in base cycles. Pure silence — nothing inserted.
     var writeGap = function(chunk) {
       var n = (chunk.samples != null) ? chunk.samples : samplesPerCycle * chunk.cycles;
-      if (n > 0) {
-        var k = samplePos - 1;
-        while (k >= 0 && sampleData[k] === 0) k--;          // last non-silent sample
-        if (k >= 0) { sampleData[samplePos++] = (sampleData[k] > 0) ? -0x4000 : 0x4000; n--; }
-      }
       samplePos += n;
     }
 
