@@ -13,7 +13,11 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
   "use strict";
   // Create 16-bit array of a sine wave for given frequency, cycles and phase
   function generateTone (label, frequency, cycles, phase, sampleRate) {
-    var samples = Math.floor((sampleRate / frequency)*cycles);
+    // Nearest whole-sample cycle length: flooring always truncates, which on the
+    // short high-frequency carrier cycle (~17.85 samples) loses ~5% and makes MakeUEF
+    // re-measure the base frequency (0x0113) several % high — past the round-trip
+    // tolerance. Rounding keeps the rendered frequency within <1%.
+    var samples = Math.round((sampleRate / frequency)*cycles);
     var array = new Int16Array(samples);
     for (var i = 0 ; i < samples ; i++) {
       array[i] = Math.floor(Math.sin(phase+((i / sampleRate) * (frequency * 2 * Math.PI))) * 0x7fff);
@@ -115,10 +119,10 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
 
         case 0x0114: // securityCycles - high/low frequency wave pattern
         var secCycles = UEFchunk.data[0] | (UEFchunk.data[1]<<8) | (UEFchunk.data[2]<<16);
-        var secBits = [];                       // 1 = high (2400Hz) cycle, 0 = low (1200Hz) cycle
+        var secBits = [];                       // UEF spec: 0 = short wave (2400Hz), 1 = long wave (1200Hz)
         for (var sc = 0; sc < secCycles; sc++) {
           var secByte = UEFchunk.data[5+(sc>>3)];
-          secBits.push((secByte >> (7-(sc&7))) & 1);
+          secBits.push((secByte >> (sc&7)) & 1);   // UEF spec: bits stored LSB-first (1st wave = LSB)
         }
         // first/last pulse: 'P' = leading/trailing half-cycle (single pulse), 'W' = whole cycle
         uefChunks.push({type:"securityCycles", cycles:secCycles, bits:secBits,
@@ -194,6 +198,24 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
       } samplePos+=length;
     }
 
+    // Bound a tone's first half-pulse against a preceding SILENT gap. A sine tone
+    // ramps up from zero, so a square-wave reader (and MakeUEF) folds that soft
+    // leading edge into the gap and mis-groups the boundary — e.g. it reads a
+    // carrier's first cycle as a spurious 1-cycle security wave, or drops/flips a
+    // security's first cycle. A real tape's gap signal supplies that edge; emit one
+    // sample of the OPPOSITE polarity to the first half-pulse to stand in for it,
+    // and keep it OUTSIDE the chunk's decodable span by advancing the recorded start
+    // past it — so it reads as the gap's trailing edge, not a tone half-pulse. Only
+    // when silence precedes: a tone already supplies the edge, and an extra one there
+    // would itself read as a stray cycle. firstPhase = phase at the half-pulse start.
+    var boundAfterSilence = function(chunk, firstPhase) {
+      if (samplePos > 0 && sampleData[samplePos - 1] === 0) {
+        var firstSign = Math.sin(firstPhase + Math.PI / 2) >= 0 ? 1 : -1;
+        sampleData[samplePos++] = (firstSign > 0) ? -0x4000 : 0x4000;
+        chunk.timestamp = samplePos;
+      }
+    }
+
     // Write bit to audio buffer
     var writeBit = function (bit) {
       (bit==0) ? writeSample(tones.bit0) : writeSample(tones.bit1);
@@ -243,6 +265,7 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
 
     // Write carrier tone
     var writeTone = function(chunk) {
+      boundAfterSilence(chunk, curPhase);    // carrier's first cycle starts at curPhase
       for (var i = 0; i < (chunk.cycles); i++) {writeSample(tones.carrier);}
     }
 
@@ -258,16 +281,34 @@ function uef2wave (uefData, baud, sampleRate, stopPulses, phase, carrierFactor, 
     // continuous analogue tape does, but MakeUEF's decoder is polarity-sensitive
     // and fails to read inverted data — so the real reference tool round-trips
     // this (region-local) form, not the globally-propagated one.
+    // Security cycles (UEF chunk 0x0114) are a bit pattern of long and short waves.
+    // Per the UEF spec, a 0 bit is a SHORT wave (the high/2400 Hz frequency) and a
+    // 1 bit is a LONG wave (the low/base/1200 Hz frequency) — the inverse of the
+    // data-bit convention. A 'P' first/last marker makes that end a half cycle; a
+    // half cycle is a 180 deg phase step, so within the region we track a running
+    // phase and advance every following wave by it.
     var writeSecurity = function(chunk) {
       var n = chunk.bits.length;
+      if (n === 0) return;
       var ph = curPhase;
+      var leadP = (chunk.first === "P");
+      // Start phase of the first rendered half-pulse. A leading 'P' is only the
+      // SECOND half of a wave (a single half-sine hump); render it from the nearest
+      // zero crossing rather than ph + 180 deg, so a sub-sample phase offset can't
+      // split it into a stray 1-sample pulse. A 'W' first cycle starts at ph.
+      var pstart = leadP ? (Math.round(ph / Math.PI) * Math.PI - Math.PI) : ph;
+      boundAfterSilence(chunk, pstart);      // bound the first half-pulse vs a silent gap
       for (var i = 0; i < n; i++) {
-        var high = chunk.bits[i] === 1;
-        var freq = high ? curBaseFreq*highRatio : curBaseFreq;
-        var halfPulse = (i === 0 && chunk.first === "P") || (i === n-1 && chunk.last === "P");
-        var cycles = halfPulse ? 0.5 : 1;
-        writeSample(generateTone(null, freq, cycles, ph, sampleRate));
-        ph += cycles * 2 * Math.PI;
+        var longWave = chunk.bits[i] === 1;                  // 1 = long (low freq), 0 = short (high freq)
+        var freq = longWave ? curBaseFreq : curBaseFreq*highRatio;
+        if (i === 0 && leadP) {
+          writeSample(generateTone(null, freq, 0.5, pstart, sampleRate));
+          ph += 2 * Math.PI;
+        } else {
+          var cycles = (i === n-1 && chunk.last === "P") ? 0.5 : 1;   // trailing 'P' = first half
+          writeSample(generateTone(null, freq, cycles, ph, sampleRate));
+          ph += cycles * 2 * Math.PI;
+        }
       }
     }
 
