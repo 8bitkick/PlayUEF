@@ -98,8 +98,8 @@ var PlayUEF = function() {
 
   function startPlayer(uef){
     var uef = handleZip(uef);
-    // Use just the file's basename for the tape label (FILE may be a full URL)
-    uef.name = decodeURIComponent(uef.name).split(/[?#]/)[0].split("/").pop();
+    // Use just the file's basename for the tape label (FILE may be a full URL), without extension
+    uef.name = decodeURIComponent(uef.name).split(/[?#]/)[0].split("/").pop().replace(/\.(uef|zip)$/i, "");
     document.getElementById("status").innerHTML = "CONVERTING";
     var converted = uef2wave(uef.file, LOW, SAMPLE_RATE, STOPBIT, PHASE, CARRIER, HIGH);
     player(converted.wav, converted.uef, uef.name, BAUD, SAMPLE_RATE, TEXTFILE);

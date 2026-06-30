@@ -159,10 +159,23 @@ function cassette(length, position, title, baud, version) {
 
   ctx.fillStyle = '#111111';
   ctx.textAlign = 'center';
-  ctx.font="16px Arial";
-  if (title.length > 40) {ctx.font="10px Arial";};
 
-  ctx.fillText(title,200,52);
+  // Fit the title to the label width: shrink the font first, then ellipsis-truncate if needed.
+  var maxWidth = 320;
+  var fontSize = 16;
+  ctx.font = fontSize + "px Arial";
+  while (ctx.measureText(title).width > maxWidth && fontSize > 9) {
+    fontSize--;
+    ctx.font = fontSize + "px Arial";
+  }
+  var shownTitle = title;
+  if (ctx.measureText(shownTitle).width > maxWidth) {
+    while (shownTitle.length > 1 && ctx.measureText(shownTitle + "…").width > maxWidth) {
+      shownTitle = shownTitle.slice(0, -1);
+    }
+    shownTitle += "…";
+  }
+  ctx.fillText(shownTitle,200,52);
 
   ctx.font="10px Arial";
 
@@ -209,7 +222,7 @@ function cassette(length, position, title, baud, version) {
   ctx.font="20px Arial";
   ctx.textAlign = 'left';
   ctx.fillStyle = '#000000';
-  ctx.fillText("bbcmicrobot.com",35,185);
+  ctx.fillText("8bitkick.cc",35,185);
 
   // markers
   ctx.strokeStyle="rgba(200,200,200, 0.2)";
